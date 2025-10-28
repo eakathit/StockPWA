@@ -1,0 +1,21 @@
+{
+  "name": "ระบบคลังสินค้าโรงงาน",
+  "short_name": "คลังสินค้า",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#3b82f6",
+  "description": "ระบบจัดการคลังสินค้า PWA",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

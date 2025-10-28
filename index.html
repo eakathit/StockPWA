@@ -1,0 +1,2563 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบคลังสินค้า (Firebase)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#3b82f6">
+
+  <style>
+    /* ... (โค้ด CSS เดิมทั้งหมดของคุณ) ... */
+    body {
+      font-family: 'Prompt', sans-serif;
+      background-color: #f8fafc;
+    }
+
+    .card {
+      transition: all 0.3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    .nav-item.active {
+      border-left: 4px solid #3b82f6;
+      background-color: rgba(59, 130, 246, 0.1);
+    }
+
+    .table-container {
+      overflow-x: auto;
+    }
+
+    @media (max-width: 640px) {
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    #filter-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      justify-content: center;
+      z-index: 50;
+      transition: opacity 0.2s ease;
+    }
+
+    #filter-modal.flex {
+      display: flex;
+      align-items: center;
+      opacity: 1;
+    }
+
+    @media (min-width: 768px) {
+      #filter-modal.flex {
+        align-items: flex-start;
+        padding-top: 80px;
+      }
+    }
+
+    .filter-box {
+      background: white;
+      border-radius: 1rem;
+      padding: 1.5rem;
+      width: 90%;
+      max-width: 420px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+      animation: fadeIn 0.25s ease;
+    }
+
+    .filter-popup {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+
+    .filter-container {
+      background: white;
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      width: 320px;
+      box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.15);
+      position: relative;
+      animation: fadeIn 0.2s ease-in-out;
+    }
+
+    .filter-container::before {
+      content: "";
+      display: block;
+      height: 4px;
+      width: 100%;
+      background: white;
+      position: absolute;
+      top: 0;
+      left: 0;
+      border-top-left-radius: 0.75rem;
+      border-top-right-radius: 0.75rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .filter-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .filter-header h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    #close-filter-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: #6b7280;
+      font-size: 1.2rem;
+    }
+
+    #close-filter-btn:hover {
+      color: #111827;
+    }
+
+    .filter-box select {
+      width: 100%;
+      border: 1px solid #d1d5db;
+      border-radius: 0.5rem;
+      padding: 0.5rem;
+      font-size: 0.9rem;
+      color: #374151;
+      outline: none;
+      transition: border 0.2s;
+      margin-bottom: 0.75rem;
+    }
+
+    .filter-box select:focus {
+      border-color: #3b82f6;
+    }
+
+    .filter-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .filter-actions button {
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+
+    #apply-filter-btn {
+      background: #3b82f6;
+      color: white;
+    }
+
+    #apply-filter-btn:hover {
+      background: #2563eb;
+    }
+
+    #reset-filter-btn {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    #reset-filter-btn:hover {
+      background: #e5e7eb;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: scale(0.95);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .toast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      align-items: center;
+      min-width: 250px;
+      max-width: 350px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      color: white;
+      font-size: 14px;
+      opacity: 0;
+      transform: translateY(-20px);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      z-index: 9999;
+      box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .toast .toast-icon {
+      margin-right: 10px;
+      font-size: 18px;
+    }
+
+    .toast .toast-message {
+      flex: 1;
+    }
+
+    .toast .toast-progress {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.7);
+      animation: progressbar 3s linear forwards;
+    }
+
+    @keyframes progressbar {
+      from {
+        width: 100%;
+      }
+
+      to {
+        width: 0%;
+      }
+    }
+
+    .toast.success {
+      background: linear-gradient(135deg, #4caf50, #66bb6a);
+    }
+
+    .toast.error {
+      background: linear-gradient(135deg, #f44336, #ef5350);
+    }
+
+    .toast.info {
+      background: linear-gradient(135deg, #2196f3, #42a5f5);
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    /* Loading Spinner */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.95);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    .loading-overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid #f3f4f6;
+      border-top: 4px solid #3b82f6;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .loading-text {
+      margin-top: 16px;
+      color: #6b7280;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    /* Skeleton Loading */
+    .skeleton {
+      background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+      background-size: 200% 100%;
+      animation: loading 1.5s infinite;
+      border-radius: 4px;
+    }
+
+    @keyframes loading {
+      0% {
+        background-position: 200% 0;
+      }
+
+      100% {
+        background-position: -200% 0;
+      }
+    }
+
+    .skeleton-row {
+      height: 48px;
+      margin-bottom: 8px;
+    }
+
+    /* Fade In Animation */
+    .fade-in {
+      animation: fadeInUp 0.4s ease-out;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    /* ✅ แก้ไข CSS สำหรับ Sidebar & Content */
+    .sidebar {
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 16rem;
+      height: 100vh;
+      transition: transform 0.3s ease-in-out;
+      z-index: 40;
+      background-color: white;
+    }
+
+    .sidebar.sidebar-hidden {
+      transform: translateX(-100%);
+    }
+
+    .sidebar.sidebar-visible {
+      transform: translateX(0);
+    }
+
+    .content-area {
+      margin-left: 16rem;
+      transition: margin-left 0.3s ease-in-out;
+      min-height: 100vh;
+      flex: 1;
+    }
+
+    .content-area.expanded {
+      margin-left: 0;
+    }
+
+    /* Hamburger button - อยู่ใน sidebar */
+    #hamburger-btn {
+      position: absolute;
+      top: 1.5rem;
+      right: 1rem;
+      z-index: 50;
+      background: white;
+      border: none;
+      padding: 0.5rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    #hamburger-btn:hover {
+      background: rgba(59, 130, 246, 0.1);
+      border-radius: 0.5rem;
+    }
+
+    #hamburger-btn svg {
+      transition: transform 0.3s ease;
+    }
+
+    .sidebar.sidebar-hidden #hamburger-btn {
+      position: fixed;
+      left: 1rem;
+      top: 1rem;
+      background: white;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      border-radius: 0.5rem;
+      padding: 0.5rem;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 16rem;
+      }
+      
+      .content-area {
+        margin-left: 0;
+      }
+    }
+    .sidebar.sidebar-hidden #hamburger-btn {
+      position: fixed;
+      left: 1rem;
+      top: 1rem;
+      background: white;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      border-radius: 0.5rem;
+      padding: 0.5rem;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 16rem;
+      }
+      
+      .content-area {
+        margin-left: 0;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  
+  <div class="flex flex-col md:flex-row min-h-screen">
+
+    <button id="hamburger-btn" class="p-2 rounded bg-white shadow-md hover:bg-gray-100 shifted">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-700" fill="none"
+           viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+    </button>
+  
+    <div class="sidebar bg-white shadow-md overflow-y-auto sidebar-visible">
+      <div class="p-4 flex items-center justify-start">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+        </svg>
+        <span class="ml-2 text-xl font-semibold text-gray-800">ระบบคลังสินค้า</span>
+      </div>
+  
+      <nav class="mt-6">
+        <div id="dashboard-nav" class="nav-item active px-4 py-3 flex items-center cursor-pointer">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24"
+               stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+          </svg>
+          <span class="ml-3 text-gray-700">แดชบอร์ด</span>
+        </div>
+        <div id="stock-nav" class="nav-item px-4 py-3 flex items-center cursor-pointer">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+          <span class="ml-3 text-gray-700">รายการสินค้า</span>
+        </div>
+        <div id="receiving-nav" class="nav-item px-4 py-3 flex items-center cursor-pointer">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span class="ml-3 text-gray-700">รับสินค้า</span>
+        </div>
+        <div id="issuing-nav" class="nav-item px-4 py-3 flex items-center cursor-pointer">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span class="ml-3 text-gray-700">เบิกสินค้า</span>
+        </div>
+        <div id="po-nav" class="nav-item px-4 py-3 flex items-center cursor-pointer">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <span class="ml-3 text-gray-700">ใบสั่งซื้อ</span>
+        </div>
+        <div id="search-nav" class="nav-item px-4 py-3 flex items-center cursor-pointer">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <span class="ml-3 text-gray-700">ค้นหาใบสั่งซื้อ</span>
+        </div>
+      </nav>
+    </div>
+      
+    <div class="content-area">
+      
+      <div id="dashboard-page" class="p-6">
+        <h1 class="text-2xl font-semibold text-gray-800 mb-6">แดชบอร์ดคลังสินค้า</h1>
+  
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 stats-grid mb-8">
+            <div class="bg-white rounded-lg shadow-sm p-6 card border-l-4 border-blue-500">
+              <div class="flex items-center">
+                <div class="p-3 rounded-full bg-blue-100 mr-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10" />
+                  </svg>
+                </div>
+                <div>
+                  <p class="text-gray-500 text-sm">จำนวนสินค้าทั้งหมด</p>
+                  <p id="total-stock" class="text-2xl font-semibold text-gray-800">-</p>
+                </div>
+              </div>
+            </div>
+  
+            <div class="bg-white rounded-lg shadow-sm p-6 card border-l-4 border-green-500">
+              <div class="flex items-center">
+                <div class="p-3 rounded-full bg-green-100 mr-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12" />
+                  </svg>
+                </div>
+                <div>
+                  <p class="text-gray-500 text-sm">รับเข้าวันนี้</p>
+                  <p id="receive-today" class="text-2xl font-semibold text-gray-800">-</p>
+                </div>
+              </div>
+            </div>
+  
+            <div class="bg-white rounded-lg shadow-sm p-6 card border-l-4 border-red-500">
+              <div class="flex items-center">
+                <div class="p-3 rounded-full bg-red-100 mr-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M17 13l-5 5m0 0l-5-5m5 5V6" />
+                  </svg>
+                </div>
+                <div>
+                  <p class="text-gray-500 text-sm">เบิกออกวันนี้</p>
+                  <p id="issue-today" class="text-2xl font-semibold text-gray-800">-</p>
+                </div>
+              </div>
+            </div>
+          </div>
+  
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div class="bg-white rounded-lg shadow-sm p-6">
+              <h2 class="text-lg font-semibold text-gray-800 mb-4">สถิติการเคลื่อนไหว</h2>
+              <select id="activityRange" class="border border-gray-300 px-3 py-1 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="7days">7 วันล่าสุด</option>
+                <option value="30days">30 วันล่าสุด</option>
+                <option value="90days">90 วันล่าสุด</option>
+              </select>
+              <div class="h-64">
+                <canvas id="movementChart"></canvas>
+              </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-sm p-6">
+              <h2 class="text-lg font-semibold text-gray-800 mb-4">สินค้าตามหมวดหมู่</h2>
+              <div id="categoryChart" class="h-64">
+                <canvas id="categoryChartCanvas"></canvas>
+              </div>
+            </div>
+          </div>
+  
+          <div class="bg-white rounded-lg shadow-sm p-6">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-lg font-semibold text-gray-800">รายการสินค้า (5 รายการล่าสุด)</h2>
+              <button
+                id="dashboard-add-btn" 
+                class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm flex items-center transition duration-300 ease-in-out">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24"
+                  stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                เพิ่มสินค้า
+              </button>
+            </div>
+  
+            <div class="table-container overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">รหัสสินค้า
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">หมวดหมู่
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ยี่ห้อ</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">จำนวน</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">สถานะ</th>
+                  </tr>
+                </thead>
+                <tbody id="dashboard-stock-body" class="bg-white divide-y divide-gray-200">
+                </tbody>
+              </table>
+            </div>
+  
+            <div class="mt-4 text-right">
+              <button id="dashboard-view-all" class="text-blue-500 hover:underline text-sm">
+                ดูทั้งหมด →
+              </button>
+            </div>
+          </div>
+      </div>
+  
+      <div id="stock-page" class="p-6 hidden">
+        <h1 class="text-2xl font-semibold text-gray-800 mb-6">รายการสินค้าในคลัง</h1>
+  
+        <div class="bg-white rounded-lg shadow-sm p-6">
+          <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+            <div class="w-full md:w-1/2 relative">
+              <input id="search-input" type="text" placeholder="ค้นหาสินค้า..."
+                class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400 absolute left-3 top-2.5" fill="none"
+                viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+  
+            <div class="flex space-x-3">
+              <button id="open-filter-btn"
+                class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24"
+                  stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                กรอง
+              </button>
+              <button id="add-stock-btn"
+                class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm flex items-center transition duration-300 ease-in-out">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24"
+                  stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                เพิ่มสินค้า
+              </button>
+            </div>
+          </div>
+  
+          <div class="table-container overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">รหัสสินค้า
+                  </th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">หมวดหมู่
+                  </th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ยี่ห้อ</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    จำนวนคงเหลือ</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">สถานะ</th>
+                </tr>
+              </thead>
+              <tbody id="stock-table-body" class="bg-white divide-y divide-gray-200">
+              </tbody>
+            </table>
+          </div>
+          <div class="mt-4 flex justify-between items-center">
+            <div id="stock-pagination-info" class="text-sm text-gray-500"></div>
+            <div class="flex space-x-2" id="stock-pagination-buttons"></div>
+          </div>
+        </div>
+      </div>
+  
+      <div id="filter-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden justify-center items-center z-50 p-4">
+        <div class="bg-white rounded-lg p-6 w-80 max-h-[80vh] overflow-y-auto shadow-lg relative">
+          <h2 class="text-lg font-semibold mb-4">กรองสินค้า</h2>
+  
+          <div class="mb-4">
+            <label class="block mb-1 font-medium">หมวดหมู่</label>
+            <select id="filter-category" class="w-full border px-2 py-1 rounded-md">
+              <option value="">ทั้งหมด</option>
+            </select>
+          </div>
+  
+          <div class="mb-4">
+            <label class="block mb-1 font-medium">ยี่ห้อ</label>
+            <select id="filter-brand" class="w-full border px-2 py-1 rounded-md">
+              <option value="">ทั้งหมด</option>
+            </select>
+          </div>
+  
+          <div class="mb-4">
+            <label class="block mb-1 font-medium">สถานะ</label>
+            <select id="filter-status" class="w-full border px-2 py-1 rounded-md">
+              <option value="">ทั้งหมด</option>
+              <option value="ปกติ">ปกติ</option>
+              <option value="ใหม่">ใหม่</option>
+            </select>
+          </div>
+  
+          <div class="flex justify-between mt-4">
+            <button id="reset-filter-btn" class="px-4 py-2 border rounded-md hover:bg-gray-100">รีเซ็ต</button>
+            <div class="flex space-x-2">
+              <button id="close-filter-btn" class="px-4 py-2 border rounded-md hover:bg-gray-100">ยกเลิก</button>
+              <button id="apply-filter-btn"
+                class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">ใช้กรอง</button>
+            </div>
+          </div>
+        </div>
+      </div>
+  
+      <div id="receiving-page" class="p-6 hidden">
+        <h1 class="text-2xl font-semibold text-gray-800 mb-6">ฟอร์มรับสินค้า</h1>
+  
+        <div class="bg-white rounded-lg shadow-sm p-6">
+          <form id="receiving-form">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label for="receive-date" class="block text-sm font-medium text-gray-700 mb-1">วันที่รับ</label>
+                <input type="date" id="receive-date"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+              </div>
+  
+              <div>
+                <label for="product-code" class="block text-sm font-medium text-gray-700 mb-1">รหัสสินค้า</label>
+                <div class="flex">
+                  <input type="text" id="product-code"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                </div>
+              </div>
+  
+              <div>
+                <label for="quantity" class="block text-sm font-medium text-gray-700 mb-1">จำนวนที่รับ</label>
+                <input type="number" id="quantity" min="1"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+              </div>
+  
+              <div>
+                <label for="category" class="block text-sm font-medium text-gray-700 mb-1">หมวดหมู่</label>
+                <select id="category"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                  <option value="">เลือกหมวดหมู่</option>
+                  <option value="Adjuster pad">Adjuster pad</option>
+                  <option value="Auto Switch">Auto Switch</option>
+                  <option value="Cable">Cable</option>
+                  <option value="Cylinder (circle)">Cylinder (circle)</option>
+                  <option value="Cylinder (Large)">Cylinder (Large)</option>
+                  <option value="Guide">Guide</option>
+                  <option value="Motor">Motor</option>
+                  <option value="Others">Others</option>
+                  <option value="Photoelectric Sensors">Photoelectric Sensors</option>
+                  <option value="Pneumatic">Pneumatic</option>
+                  <option value="Proximity Sensor">Proximity Sensor</option>
+                  <option value="Sensor">Sensor</option>
+                  <option value="Solenoid valve">Solenoid valve</option>
+                  <option value="Spring">Spring</option>
+                  <option value="Toggle clamp">Toggle clamp</option>
+                </select>
+              </div>
+  
+              <div>
+                <label for="brand" class="block text-sm font-medium text-gray-700 mb-1">ยี่ห้อ</label>
+                <select id="brand"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                  <option value="">เลือกยี่ห้อ</option>
+                  <option value="Misumi">Misumi</option>
+                  <option value="SMC">SMC</option>
+                  <option value="CKD">CKD</option>
+                  <option value="OMRON">OMRON</option>
+                  <option value="Keyence">Keyence</option>
+                  <option value="other">อื่นๆ (ระบุ)</option>
+                </select>
+              </div>
+  
+              <div id="other-brand-container" class="hidden">
+                <label for="other-brand" class="block text-sm font-medium text-gray-700 mb-1">ระบุยี่ห้อ</label>
+                <input type="text" id="other-brand"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+              </div>
+  
+              <div>
+                <label for="categorystatus" class="block text-sm font-medium text-gray-700 mb-1">สถานะ</label>
+                <select id="categorystatus"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                  <option value="">เลือกสถานะ</option>
+                  <option value="ปกติ">ปกติ</option>
+                  <option value="ใหม่">ใหม่</option>
+                </select>
+              </div>
+  
+              <div class="md:col-span-2">
+                <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">หมายเหตุ</label>
+                <textarea id="notes" rows="3" placeholder="กรอกหากต้องการระบุข้อมูลเพิ่มเติม (ไม่บังคับ)"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+              </div>
+            </div>
+  
+            <div class="mt-8 flex justify-end space-x-4">
+              <button type="button" id="clear-btn"
+                class="px-6 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                เคลียร์ข้อมูล
+              </button>
+              <button type="submit"
+                class="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                บันทึก
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+  
+      <div id="issuing-page" class="p-6 hidden">
+        <h1 class="text-2xl font-semibold text-gray-800 mb-6">ฟอร์มเบิกสินค้า</h1>
+  
+        <div class="bg-white rounded-lg shadow-sm p-6">
+          <form id="issuing-form">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label for="issue-date" class="block text-sm font-medium text-gray-700 mb-1">วันที่เบิก</label>
+                <input type="date" id="issue-date"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+              </div>
+  
+              <div>
+                <label for="issue-product-code" class="block text-sm font-medium text-gray-700 mb-1">รหัสสินค้า</label>
+                <div class="flex">
+                  <input type="text" id="issue-product-code"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                  <button type="button" id="search-product-btn"
+                    class="bg-gray-100 px-4 py-2 border border-l-0 border-gray-300 rounded-r-md hover:bg-gray-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" fill="none"
+                      viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+  
+              <div>
+                <label for="issue-quantity" class="block text-sm font-medium text-gray-700 mb-1">จำนวนที่เบิก</label>
+                <input type="number" id="issue-quantity" min="1"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+              </div>
+  
+              <div>
+                <label for="current-stock"
+                  class="block text-sm font-medium text-gray-700 mb-1">จำนวนคงเหลือปัจจุบัน</label>
+                <input type="number" id="current-stock"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-100"
+                  readonly>
+              </div>
+  
+              <div>
+                <label for="issue-status" class="block text-sm font-medium text-gray-700 mb-1">สถานะ</label>
+                <select id="issue-status"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                  <option value="">เลือกสถานะ</option>
+                  <option value="ปกติ">ปกติ</option>
+                  <option value="ใหม่">ใหม่</option>
+                </select>
+              </div>
+  
+              <div>
+                <label for="requester" class="block text-sm font-medium text-gray-700 mb-1">ผู้เบิก</label>
+                <select id="requester"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                  <option value="">เลือกผู้เบิก</option>
+                  <option value="พี่โต้ง">พี่โต้ง</option>
+                  <option value="พี่เอ็ม">พี่เอ็ม</option>
+                  <option value="พี่วุธ">พี่วุธ</option>
+                  <option value="พี่บิว">พี่บิว</option>
+                  <option value="พี่เที่ยง">พี่เที่ยง</option>
+                  <option value="other">อื่นๆ (ระบุ)</option>
+                </select>
+              </div>
+  
+              <div id="other-requester-container" class="hidden">
+                <label for="other-requester" class="block text-sm font-medium text-gray-700 mb-1">ระบุชื่อผู้เบิก</label>
+                <input type="text" id="other-requester"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+              </div>
+  
+              <div class="md:col-span-2">
+                <label for="issue-purpose" class="block text-sm font-medium text-gray-700 mb-1">หมายเหตุ</label>
+                <textarea id="issue-purpose" rows="3" placeholder="กรอกหากต้องการระบุข้อมูลเพิ่มเติม (ไม่บังคับ)"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+              </div>
+            </div>
+  
+            <div class="mt-8 flex justify-end space-x-4">
+              <button type="button" id="clear-btn-issuing"
+                class="px-6 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                เคลียร์ข้อมูล
+              </button>
+              <button type="submit"
+                class="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                เบิกสินค้า
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+  
+      <div id="po-page" class="p-6 hidden">
+        <div class="flex justify-between items-center mb-6">
+          <h1 class="text-2xl font-semibold text-gray-800">ใบสั่งซื้อสินค้า</h1>
+        </div>
+  
+        <div class="bg-white rounded-lg shadow-sm p-6">
+          <form id="po-form">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label for="po-date" class="block text-sm font-medium text-gray-700 mb-1">วันที่</label>
+                <input type="date" id="po-date"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+              </div>
+  
+              <div>
+                <label for="po-number" class="block text-sm font-medium text-gray-700 mb-1">PO No.</label>
+                <input type="text" id="po-number"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+              </div>
+  
+              <div id="product-list" class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">รายการสินค้า</label>
+  
+                <div class="flex gap-6 mb-2 product-row">
+                  <input type="text" name="product-code[]" placeholder="รหัสสินค้า"
+                    class="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                  <input type="number" name="quantity[]" placeholder="จำนวน" min="1"
+                    class="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                </div>
+  
+                <div class="flex gap-4 mt-4">
+                  <button type="button" id="add-product"
+                    class="flex items-center gap-2 px-6 py-2 bg-green-500 text-white font-medium rounded-lg shadow hover:bg-green-600 transition-all duration-200">
+                    <span class="text-lg">＋</span> เพิ่มสินค้า
+                  </button>
+  
+                  <button type="button" id="remove-product"
+                    class="flex items-center gap-2 px-6 py-2 bg-red-500 text-white font-medium rounded-lg shadow hover:bg-red-600 transition-all duration-200">
+                    <span class="text-lg">−</span> ลบรายการ
+                  </button>
+                </div>
+              </div>
+  
+              <div>
+                <label for="project-code" class="block text-sm font-medium text-gray-700 mb-1">รหัสโปรเจกต์</label>
+                <input type="text" id="project-code"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+              </div>
+  
+              <div>
+                <label for="purchaser" class="block text-sm font-medium text-gray-700 mb-1">ผู้สั่งซื้อ</label>
+                <select id="purchaser"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                  <option value="">เลือกผู้สั่งซื้อ</option>
+                  <option value="พี่ยุ้ย">พี่ยุ้ย</option>
+                  <option value="พี่เอ็ม">พี่เอ็ม</option>
+                  <option value="พี่ไบร์ท">พี่ไบร์ท</option>
+                  <option value="พี่น้ำนิ่ง">พี่น้ำนิ่ง</option>
+                  <option value="other">อื่นๆ (ระบุ)</option>
+                </select>
+              </div>
+  
+              <div id="other-purchaser-container" class="hidden">
+                <label for="other-purchaser"
+                  class="block text-sm font-medium text-gray-700 mb-1">ระบุชื่อผู้สั่งซื้อสินค้า</label>
+                <input type="text" id="other-purchaser"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+              </div>
+  
+              <div>
+                <label for="receiver" class="block text-sm font-medium text-gray-700 mb-1">ผู้รับสินค้า</label>
+                <select id="receiver"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                  <option value="">เลือกผู้รับสินค้า</option>
+                  <option value="พี่อ้วน">พี่อ้วน</option>
+                  <option value="พี่ฟิว">พี่ฟิว</option>
+                  <option value="พี่ออม">พี่ออม</option>
+                  <option value="พี่เที่ยง">พี่เที่ยง</option>
+                  <option value="อั้ม">อั้ม</option>
+                  <option value="other">อื่นๆ (ระบุ)</option>
+                </select>
+              </div>
+  
+              <div id="other-receiver-container" class="hidden">
+                <label for="other-receiver" class="block text-sm font-medium text-gray-700 mb-1">ระบุชื่อผู้รับสินค้า</label>
+                <input type="text" id="other-receiver"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+              </div>
+  
+              <div class="md:col-span-2">
+                <label for="po-notes" class="block text-sm font-medium text-gray-700 mb-1">หมายเหตุ</label>
+                <textarea id="po-notes" rows="3" placeholder="กรอกหากต้องการระบุข้อมูลเพิ่มเติม"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+              </div>
+            </div>
+  
+            <div class="mt-8 flex justify-end space-x-4">
+              <button type="button" id="po-clear-btn" class="px-6 py-2 border rounded-md bg-gray-200 hover:bg-gray-300">ยกเลิก</button>
+              <button type="submit"
+                class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">บันทึก</button>
+            </div>
+          </form>
+        </div>
+      </div>
+  
+      <div id="search-page" class="p-6 hidden">
+        <h1 class="text-2xl font-semibold text-gray-800 mb-6">ตรวจสอบใบสั่งซื้อ</h1>
+  
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label for="search-po-number" class="block text-sm font-medium text-gray-700 mb-1">
+                PO Number
+              </label>
+              <input type="text" id="search-po-number" placeholder="ค้นหา PO Number..."
+                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+  
+            <div>
+              <label for="search-project-code" class="block text-sm font-medium text-gray-700 mb-1">
+                รหัสโปรเจกต์
+              </label>
+              <input type="text" id="search-project-code" placeholder="ค้นหารหัสโปรเจกต์..."
+                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+          </div>
+  
+          <div class="mt-4 flex justify-end space-x-3">
+            <button id="clear-search-btn" type="button"
+              class="px-6 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+              เคลียร์
+            </button>
+            <button id="search-po-btn" type="button"
+              class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium">
+              ค้นหา
+            </button>
+          </div>
+        </div>
+  
+        <div class="bg-white rounded-lg shadow-sm p-6">
+          <h2 class="text-lg font-semibold text-gray-800 mb-4">ผลการค้นหา</h2>
+  
+          <div class="table-container overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    วันที่
+                  </th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    PO Number
+                  </th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    รหัสสินค้า
+                  </th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    จำนวน
+                  </th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    รหัสโปรเจกต์
+                  </th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    ผู้สั่งซื้อ
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="search-results-body" class="bg-white divide-y divide-gray-200">
+                <tr>
+                  <td colspan="7" class="px-6 py-8 text-center text-gray-500">
+                    กรอกฟอร์มด้านบนเพื่อค้นหาใบสั่งซื้อ
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+  
+          <div class="mt-4 flex justify-between items-center">
+            <div id="search-pagination-info" class="text-sm text-gray-500"></div>
+            <div class="flex space-x-2" id="search-pagination-buttons"></div>
+          </div>
+        </div>
+      </div>
+  
+      <div id="toast" class="toast hidden">
+        <span class="toast-icon"></span>
+        <span class="toast-message"></span>
+        <div class="toast-progress"></div>
+      </div>
+  
+      <div id="loading-overlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <div class="loading-text">กำลังโหลดข้อมูล...</div>
+      </div>
+
+  </div> </div> <script src="https://www.gstatic.com/firebasejs/9.10.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.10.0/firebase-firestore-compat.js"></script>
+
+  <script>
+    // ✅ *** ใส่ FIREBASE CONFIG ของคุณที่นี่ ***
+    // (ไปที่ Firebase Console > Project Settings > General > Your apps > Web app)
+    const firebaseConfig = {
+  apiKey: "AIzaSyAmGbl2jSJf321zkfChmZR8aINS7QHW_uo",
+  authDomain: "stockapppwa.firebaseapp.com",
+  projectId: "stockapppwa",
+  storageBucket: "stockapppwa.firebasestorage.app",
+  messagingSenderId: "16811250873",
+  appId: "1:16811250873:web:4c879fc24f03f1bb29f768",
+  measurementId: "G-1E5PZ6R2RD"
+};
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    
+    // ✅ นี่คือตัวแปรหลักสำหรับเชื่อมต่อฐานข้อมูล
+    const db = firebase.firestore(); 
+
+  </script>
+
+  <script>
+        // Constants
+        const PAGES = {
+          DASHBOARD: 0,
+          STOCK: 1,
+          RECEIVING: 2,
+          ISSUING: 3,
+          PO: 4,
+          SEARCH: 5
+        };
+
+        // State Management
+        const AppState = {
+          stockData: [], // เก็บข้อมูลดิบจาก Firestore
+          filteredStockData: [],
+          currentPage: 1,
+          itemsPerPage: 30,
+          movementChartInstance: null,
+          categoryChartInstance: null,
+          isLoading: false,
+          stockLoaded: false, // ✅ เพิ่ม state นี้เพื่อป้องกันการโหลดซ้ำ
+          cache: {
+            stockData: null,
+            dashboardData: null,
+            timestamp: null
+          }
+        };
+
+        // Loading Functions
+        function showLoading(message = 'กำลังโหลดข้อมูล...') {
+          const overlay = document.getElementById('loading-overlay');
+          const loadingText = overlay?.querySelector('.loading-text');
+          if (loadingText) loadingText.textContent = message;
+          if (overlay) overlay.classList.add('show');
+          AppState.isLoading = true;
+        }
+
+        function hideLoading() {
+          const overlay = document.getElementById('loading-overlay');
+          if (overlay) {
+            setTimeout(() => {
+              overlay.classList.remove('show');
+              AppState.isLoading = false;
+            }, 300);
+          }
+        }
+
+// Main Init
+document.addEventListener('DOMContentLoaded', function () {
+  initNavigation();
+  initEventListeners();
+  
+  // ✅ PWA: ลงทะเบียน Service Worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('Service Worker registered', reg))
+      .catch(err => console.error('Service Worker registration failed', err));
+  }
+  
+  // ✅ ลบโค้ดส่วน <?= page ?> ออก
+  // ...
+
+  // Hamburger Menu
+  const hamburgerBtn = document.getElementById("hamburger-btn");
+  const sidebar = document.querySelector(".sidebar");
+  const contentArea = document.querySelector(".content-area");
+
+  if (hamburgerBtn) {
+    hamburgerBtn.addEventListener("click", function() {
+      sidebar.classList.toggle("sidebar-hidden");
+      sidebar.classList.toggle("sidebar-visible");
+      contentArea.classList.toggle("expanded");
+      hamburgerBtn.classList.toggle("shifted");
+    });
+  }
+});
+
+
+// Navigation System
+function initNavigation() {
+      const navItems = document.querySelectorAll('.nav-item');
+      const pages = [
+        document.getElementById('dashboard-page'),
+        document.getElementById('stock-page'),
+        document.getElementById('receiving-page'),
+        document.getElementById('issuing-page'),
+        document.getElementById('po-page'),
+        document.getElementById('search-page')
+      ];
+
+  function showPage(index) {
+    pages.forEach(page => {
+      if (page) page.classList.add('hidden');
+    });
+    
+    if (pages[index]) {
+      pages[index].classList.remove('hidden');
+    }
+    
+    navItems.forEach(item => item.classList.remove('active'));
+    if (navItems[index]) {
+      navItems[index].classList.add('active');
+    }
+
+    // โหลดข้อมูลตามหน้า
+    switch(index) {
+      case PAGES.DASHBOARD:
+        loadDashboardData();
+        loadDashboardStock();
+        loadActivityChart('7days'); 
+        renderCategoryChart();
+        break;
+      case PAGES.STOCK:
+        loadStockDataPage(); // โหลดข้อมูลสต็อกถ้ายังไม่มี
+        break;
+      case PAGES.RECEIVING:
+        loadReceivingPageData();
+        break;
+      case PAGES.ISSUING:
+        loadIssuingPageData();
+        break;
+      case PAGES.PO:
+        loadPOPageData();
+        break;
+      case PAGES.SEARCH:
+        loadSearchPageData();
+        break;
+    }
+  }
+
+  // Bind navigation events
+  document.getElementById('dashboard-nav')?.addEventListener('click', () => showPage(PAGES.DASHBOARD));
+  document.getElementById('stock-nav')?.addEventListener('click', () => showPage(PAGES.STOCK));
+  document.getElementById('receiving-nav')?.addEventListener('click', () => showPage(PAGES.RECEIVING));
+  document.getElementById('issuing-nav')?.addEventListener('click', () => showPage(PAGES.ISSUING));
+  document.getElementById('po-nav')?.addEventListener('click', () => showPage(PAGES.PO));
+  document.getElementById('search-nav')?.addEventListener('click', () => showPage(PAGES.SEARCH));
+
+  // โหลดหน้าแรก
+  showPage(PAGES.DASHBOARD);
+}
+
+// Event Listeners
+function initEventListeners() {
+  // ปุ่มเพิ่มสินค้าใน Dashboard
+  document.getElementById('dashboard-add-btn')?.addEventListener('click', () => {
+      document.getElementById('receiving-nav')?.click();
+  });
+
+  // ปุ่ม "ดูทั้งหมด" ใน Dashboard
+  document.getElementById('dashboard-view-all')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById('stock-nav')?.click();
+  });
+
+  // กราฟ
+  document.getElementById('activityRange')?.addEventListener('change', function() {
+      loadActivityChart(this.value);
+  });
+
+  // ปุ่มเพิ่มสินค้าใน Stock Page
+  document.getElementById('add-stock-btn')?.addEventListener('click', () => {
+      document.getElementById('receiving-nav')?.click();
+  });
+
+  // ฟิลเตอร์ Stock Page
+  const searchInput = document.getElementById("search-input");
+  if (searchInput) {
+    let searchTimeout = null;
+    searchInput.addEventListener("input", function () {
+      const searchText = this.value.trim().toLowerCase();
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        applySearchAndFilter(searchText);
+      }, 300);
+    });
+  }
+
+  // Modal Filter
+  document.getElementById("open-filter-btn")?.addEventListener("click", () => {
+      const filterModal = document.getElementById("filter-modal");
+      if (filterModal) {
+        filterModal.classList.add("flex");
+        filterModal.classList.remove("hidden");
+      }
+  });
+  
+  document.getElementById("close-filter-btn")?.addEventListener("click", closeFilterModal);
+  
+  document.getElementById("filter-modal")?.addEventListener("click", (e) => {
+      if (e.target.id === "filter-modal") closeFilterModal();
+  });
+
+  // Apply & Reset Filter
+  document.getElementById("apply-filter-btn")?.addEventListener("click", () => {
+      const searchText = document.getElementById("search-input")?.value.trim().toLowerCase() || "";
+      applySearchAndFilter(searchText);
+      closeFilterModal();
+  });
+
+  document.getElementById("reset-filter-btn")?.addEventListener("click", () => {
+      document.getElementById("filter-category").value = "";
+      document.getElementById("filter-brand").value = "";
+      document.getElementById("filter-status").value = "";
+      document.getElementById("search-input").value = "";
+      
+      AppState.filteredStockData = [...AppState.stockData];
+      AppState.currentPage = 1;
+      renderStockPage();
+      closeFilterModal();
+  });
+
+  // Receiving Form
+  const receivingForm = document.getElementById("receiving-form");
+  if (receivingForm) {
+    receivingForm.addEventListener("submit", submitReceivingForm);
+    document.getElementById("clear-btn")?.addEventListener("click", () => {
+        receivingForm.reset();
+        document.getElementById("other-brand-container").classList.add("hidden");
+    });
+  }
+
+  // Brand Select (Receiving)
+  document.getElementById('brand')?.addEventListener('change', function () {
+      const otherBrandContainer = document.getElementById('other-brand-container');
+      if (this.value === 'other') {
+        otherBrandContainer.classList.remove('hidden');
+      } else {
+        otherBrandContainer.classList.add('hidden');
+      }
+  });
+
+  // Issuing Form
+  const issuingForm = document.getElementById("issuing-form");
+  if (issuingForm) {
+    issuingForm.addEventListener("submit", submitIssuingForm);
+    document.getElementById("clear-btn-issuing")?.addEventListener("click", () => {
+        issuingForm.reset();
+        document.getElementById("current-stock").value = "";
+        document.getElementById("other-requester-container").classList.add("hidden");
+    });
+  }
+
+  // Search Product Button (Issuing)
+  document.getElementById("search-product-btn")?.addEventListener("click", searchProductStock);
+
+  // Requester Select (Issuing)
+  document.getElementById('requester')?.addEventListener('change', function () {
+      const otherRequesterContainer = document.getElementById('other-requester-container');
+      if (this.value === 'other') {
+        otherRequesterContainer.classList.remove('hidden');
+      } else {
+        otherRequesterContainer.classList.add('hidden');
+      }
+  });
+
+  // PO Form
+  const poForm = document.getElementById("po-form");
+  if (poForm) {
+    poForm.addEventListener("submit", submitPOForm);
+    document.getElementById("po-clear-btn")?.addEventListener("click", () => {
+        poForm.reset();
+        document.getElementById('other-purchaser-container').classList.add('hidden');
+        document.getElementById('other-receiver-container').classList.add('hidden');
+        // ลบแถวสินค้าที่เพิ่มมา
+        const productList = document.getElementById("product-list");
+        const rows = productList.querySelectorAll(".product-row");
+        rows.forEach((row, index) => {
+            if (index > 0) productList.removeChild(row);
+        });
+    });
+  }
+
+  // Purchaser Select (PO)
+  document.getElementById('purchaser')?.addEventListener('change', function () {
+      const otherPurchaserContainer = document.getElementById('other-purchaser-container');
+      if (this.value === 'other') {
+        otherPurchaserContainer.classList.remove('hidden');
+      } else {
+        otherPurchaserContainer.classList.add('hidden');
+      }
+  });
+
+  // Receiver Select (PO)
+  document.getElementById('receiver')?.addEventListener('change', function () {
+      const otherReceiverContainer = document.getElementById('other-receiver-container');
+      if (this.value === 'other') {
+        otherReceiverContainer.classList.remove('hidden');
+      } else {
+        otherReceiverContainer.classList.add('hidden');
+      }
+  });
+
+  // Add/Remove Product Rows (PO)
+  const addProductBtn = document.getElementById("add-product");
+  const removeProductBtn = document.getElementById("remove-product");
+  const productList = document.getElementById("product-list");
+  
+  if (addProductBtn && productList) {
+    addProductBtn.addEventListener("click", function () {
+      const newRow = document.createElement("div");
+      newRow.classList.add("flex", "gap-6", "mb-2", "product-row");
+      newRow.innerHTML = `
+        <input type="text" name="product-code[]" placeholder="รหัสสินค้า" class="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+        <input type="number" name="quantity[]" placeholder="จำนวน" min="1" class="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+      `;
+      productList.insertBefore(newRow, addProductBtn.parentElement);
+    });
+  }
+  
+  if (removeProductBtn && productList) {
+    removeProductBtn.addEventListener("click", function () {
+      const rows = productList.querySelectorAll(".product-row");
+      if (rows.length > 1) {
+        productList.removeChild(rows[rows.length - 1]);
+      }
+    });
+  }
+
+  // Search Page Events
+  document.getElementById('search-po-btn')?.addEventListener('click', performPOSearch);
+  document.getElementById('clear-search-btn')?.addEventListener('click', clearPOSearch);
+}
+
+
+// ===== ✅ Data Loading Functions (Firestore) =====
+
+/**
+ * โหลดข้อมูลสรุปสำหรับ Dashboard
+ * แปลงจาก Code.js/getDashboardData
+ */
+async function loadDashboardData() {
+  try {
+    // 1. รวมจำนวนสินค้าทั้งหมดจาก Stock
+    const stockSnapshot = await db.collection("stock").get();
+    let totalStock = 0;
+    stockSnapshot.forEach(doc => {
+      totalStock += Number(doc.data()['จำนวนคงเหลือ']) || 0;
+    });
+    document.getElementById("total-stock").textContent = totalStock;
+
+    // 2. นับจำนวนรับเข้าวันนี้
+    const todayStr = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD"
+    const receiveSnapshot = await db.collection("receive")
+                                    .where("date", "==", todayStr) // กรองข้อมูลด้วย Firestore
+                                    .get();
+    let receiveToday = 0;
+    receiveSnapshot.forEach(doc => {
+      receiveToday += Number(doc.data().quantity) || 0;
+    });
+    document.getElementById("receive-today").textContent = receiveToday;
+
+    // 3. นับจำนวนเบิกออกวันนี้
+    const issueSnapshot = await db.collection("issue")
+                                  .where("date", "==", todayStr) // กรองข้อมูลด้วย Firestore
+                                  .get();
+    let issueToday = 0;
+    issueSnapshot.forEach(doc => {
+      issueToday += Number(doc.data().quantity) || 0;
+    });
+    document.getElementById("issue-today").textContent = issueToday;
+
+  } catch (err) {
+    console.error("Error loading dashboard data:", err);
+    showToast("โหลดข้อมูล Dashboard ล้มเหลว", "error");
+  }
+}
+
+/**
+ * โหลดข้อมูลสต็อก 5 รายการสำหรับ Dashboard
+ */
+async function loadDashboardStock() {
+  const tbody = document.getElementById("dashboard-stock-body");
+  if (!tbody) return;
+  tbody.innerHTML = ""; // เคลียร์ของเก่า
+  
+  try {
+    // ดึงข้อมูล 5 รายการล่าสุด (ถ้ามี timestamp) หรือแค่ 5 รายการ
+    const snapshot = await db.collection("stock").limit(5).get();
+    const data = [];
+    snapshot.forEach(doc => data.push(doc.data()));
+    renderStockDashboard(data);
+    
+  } catch (err) {
+    console.error("Error loading dashboard stock:", err);
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-red-500">ไม่สามารถโหลดข้อมูลได้</td></tr>`;
+  }
+}
+
+/**
+ * โหลดข้อมูลสต็อกทั้งหมดสำหรับหน้า Stock
+ * แปลงจาก Code.js/getStockData
+ */
+async function loadStockDataPage() {
+  if (AppState.stockLoaded) return; // ✅ ถ้ามีข้อมูลแล้วไม่โหลดซ้ำ
+  showLoading("กำลังโหลดหน้าสต็อกสินค้า...");
+  
+  try {
+    const snapshot = await db.collection("stock").get();
+    const data = [];
+    snapshot.forEach(doc => {
+        // เพิ่ม doc ID เข้าไปใน object ด้วย เผื่อต้องใช้อัปเดต
+        let item = doc.data();
+        item.id = doc.id; 
+        data.push(item);
+    });
+
+    AppState.stockData = data;
+    AppState.filteredStockData = [...data];
+    AppState.stockLoaded = true; // ✅ ตั้งค่าว่าโหลดแล้ว
+    populateFilterOptions();
+    renderStockPage();
+    
+  } catch (err) {
+      console.error("Error loading stock data:", err);
+      showToast("เกิดข้อผิดพลาดในการโหลดข้อมูลสต็อก", "error");
+  } finally {
+      hideLoading();
+  }
+}
+
+/**
+ * โหลดข้อมูลกราฟสถิติ
+ * แปลงจาก Code.js/getActivitiesSummary
+ */
+async function loadActivityChart(range) {
+  if (!AppState.isLoading) {
+    showLoading('กำลังโหลดข้อมูลกราฟ...');
+  }
+  
+  try {
+    let days = 7;
+    if (range === "30days") days = 30;
+    else if (range === "90days") days = 90;
+
+    const labels = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      labels.push(formatDateShort(date)); // ใช้วันที่ (DD/MM) เป็น label
+    }
+
+    // เตรียมข้อมูล
+    const receiveData = Array(days).fill(0);
+    const issueData = Array(days).fill(0);
+    const poData = Array(days).fill(0);
+
+    // คำนวณวันที่เริ่มต้น
+    const startDate = new Date(today);
+    startDate.setDate(startDate.getDate() - (days - 1));
+    const startDateStr = startDate.toISOString().split('T')[0]; // "YYYY-MM-DD"
+    const todayDateStr = new Date(today.getTime() + 86400000).toISOString().split('T')[0]; // +1 วันสำหรับ query
+
+    // 1. นับข้อมูลรับสินค้า
+    const receiveSnapshot = await db.collection("receive")
+                                    .where("date", ">=", startDateStr)
+                                    .where("date", "<", todayDateStr)
+                                    .get();
+    receiveSnapshot.forEach(doc => {
+        const data = doc.data();
+        const rowDate = new Date(data.date + "T00:00:00"); // ป้องกัน Timezone
+        const qty = Number(data.quantity) || 0;
+        const dayIndex = getDayIndex(rowDate, today, days);
+        if (dayIndex >= 0) receiveData[dayIndex] += qty;
+    });
+
+    // 2. นับข้อมูลเบิกสินค้า
+    const issueSnapshot = await db.collection("issue")
+                                  .where("date", ">=", startDateStr)
+                                  .where("date", "<", todayDateStr)
+                                  .get();
+    issueSnapshot.forEach(doc => {
+        const data = doc.data();
+        const rowDate = new Date(data.date + "T00:00:00");
+        const qty = Number(data.quantity) || 0;
+        const dayIndex = getDayIndex(rowDate, today, days);
+        if (dayIndex >= 0) issueData[dayIndex] += qty;
+    });
+
+    // 3. นับข้อมูลใบสั่งซื้อ (PO) แบบไม่ซ้ำ
+    const poSnapshot = await db.collection("po")
+                               .where("date", ">=", startDateStr)
+                               .where("date", "<", todayDateStr)
+                               .get();
+    const poCountByDate = {}; // เก็บ PO ไม่ซ้ำตามวันที่
+    poSnapshot.forEach(doc => {
+        const data = doc.data();
+        const rowDate = new Date(data.date + "T00:00:00");
+        const poNumber = data.poNumber;
+        const dayIndex = getDayIndex(rowDate, today, days);
+
+        if (dayIndex >= 0) {
+            const labelDate = labels[dayIndex];
+            if (!poCountByDate[labelDate]) poCountByDate[labelDate] = new Set();
+            poCountByDate[labelDate].add(poNumber); // เพิ่ม PO เข้า set
+        }
+    });
+
+    // สร้าง poData จากจำนวน PO ไม่ซ้ำ
+    for (let i = 0; i < days; i++) {
+      const labelDate = labels[i];
+      poData[i] = poCountByDate[labelDate] ? poCountByDate[labelDate].size : 0;
+    }
+
+    // ส่งข้อมูลไปวาดกราฟ
+    renderActivityChart({
+      labels: labels,
+      receiveData: receiveData,
+      issueData: issueData,
+      poData: poData
+    });
+
+  } catch (err) {
+      console.error("loadActivityChart error:", err);
+      showToast("โหลดข้อมูลกราฟล้มเหลว", "error");
+  } finally {
+      hideLoading();
+      AppState.isLoading = false;
+  }
+}
+
+
+function loadReceivingPageData() {
+  console.log("หน้ารับสินค้าถูกโหลดแล้ว (ไม่จำเป็นต้องโหลดข้อมูลล่วงหน้า)");
+  // ตั้งค่าวันที่เริ่มต้น
+  const dateInput = document.getElementById("receive-date");
+  if (dateInput && !dateInput.value) {
+    dateInput.value = new Date().toISOString().split('T')[0];
+  }
+}
+
+function loadIssuingPageData() {
+  console.log("โหลดหน้า Issuing");
+  // ตั้งค่าวันที่เริ่มต้น
+  const dateInput = document.getElementById("issue-date");
+  if (dateInput && !dateInput.value) {
+    dateInput.value = new Date().toISOString().split('T')[0];
+  }
+}
+
+function loadPOPageData() {
+  console.log("โหลดหน้า PO");
+  // ตั้งค่าวันที่เริ่มต้น
+  const dateInput = document.getElementById("po-date");
+  if (dateInput && !dateInput.value) {
+    dateInput.value = new Date().toISOString().split('T')[0];
+  }
+}
+
+function loadSearchPageData() {
+  console.log("โหลดหน้า Search");
+}
+
+// ===== Render Functions (เหมือนเดิม) =====
+function renderStockDashboard(data) {
+  const tbody = document.getElementById("dashboard-stock-body");
+  if (!tbody) return;
+
+  tbody.innerHTML = "";
+  
+  if (data.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-gray-500">ยังไม่มีข้อมูลสินค้า</td></tr>`;
+    return;
+  }
+
+  data.forEach(item => {
+    const tr = document.createElement("tr");
+    const statusClass = item['สถานะ'] === 'ใหม่'
+      ? "bg-green-100 text-green-800"
+      : "bg-gray-100 text-gray-800";
+
+    tr.innerHTML = `
+      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item['รหัสสินค้า']}</td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item['หมวดหมู่']}</td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item['ยี่ห้อ']}</td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item['จำนวนคงเหลือ']}</td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm">
+        <span class="px-2 py-1 rounded-full text-xs font-semibold ${statusClass}">
+          ${item['สถานะ']}
+        </span>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderStockPage() {
+  const tbody = document.getElementById("stock-table-body");
+  if (!tbody) return;
+  
+  tbody.innerHTML = "";
+  
+  if (AppState.filteredStockData.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-gray-500">ไม่พบข้อมูลสินค้าที่ตรงเงื่อนไข</td></tr>`;
+      renderStockPagination(); // อัปเดต pagination ด้วย
+      return;
+  }
+
+  const startIndex = (AppState.currentPage - 1) * AppState.itemsPerPage;
+  const pageData = AppState.filteredStockData.slice(startIndex, startIndex + AppState.itemsPerPage);
+
+  pageData.forEach(item => {
+    const statusClass = item['สถานะ'] === 'ใหม่'
+      ? "bg-green-100 text-green-800"
+      : "bg-gray-100 text-gray-800";
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item['รหัสสินค้า']}</td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item['หมวดหมู่']}</td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item['ยี่ห้อ']}</td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item['จำนวนคงเหลือ']}</td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm">
+        <span class="px-2 py-1 rounded-full text-xs font-semibold ${statusClass}">${item['สถานะ']}</span>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  renderStockPagination();
+}
+
+function renderStockPagination() {
+  const paginationContainer = document.getElementById("stock-pagination-buttons");
+  const paginationInfo = document.getElementById("stock-pagination-info");
+  if (!paginationContainer || !paginationInfo) return;
+
+  paginationContainer.innerHTML = "";
+  const totalItems = AppState.filteredStockData.length;
+  
+  if (totalItems === 0) {
+      paginationInfo.textContent = "ไม่พบข้อมูล";
+      return;
+  }
+
+  const totalPages = Math.ceil(totalItems / AppState.itemsPerPage);
+
+  paginationInfo.textContent = `แสดง ${(AppState.currentPage - 1) * AppState.itemsPerPage + 1} ถึง ${Math.min(AppState.currentPage * AppState.itemsPerPage, totalItems)} จาก ${totalItems} รายการ`;
+
+  if (totalPages <= 1) return; // ไม่ต้องแสดงปุ่มถ้ามีหน้าเดียว
+
+  const createPageButton = (i) => {
+    const btn = document.createElement("button");
+    btn.textContent = i;
+    btn.className = i === AppState.currentPage
+      ? "px-3 py-1 border border-gray-300 rounded-md text-sm bg-blue-50 text-blue-600 font-medium"
+      : "px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50";
+    btn.onclick = () => {
+      AppState.currentPage = i;
+      renderStockPage();
+    };
+    paginationContainer.appendChild(btn);
+  };
+
+  // Previous button
+  const prevBtn = document.createElement("button");
+  prevBtn.textContent = "ก่อนหน้า";
+  prevBtn.className = "px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50";
+  prevBtn.disabled = AppState.currentPage === 1;
+  prevBtn.onclick = () => { 
+    if (AppState.currentPage > 1) {
+      AppState.currentPage--; 
+      renderStockPage(); 
+    }
+  };
+  paginationContainer.appendChild(prevBtn);
+
+  // Page numbers (Logic เดิมดีอยู่แล้ว)
+  let pageStart = Math.max(1, AppState.currentPage - 2);
+  let pageEnd = Math.min(totalPages, AppState.currentPage + 2);
+  if (pageStart > 1) {
+    createPageButton(1);
+    if (pageStart > 2) paginationContainer.appendChild(document.createTextNode("..."));
+  }
+  for (let i = pageStart; i <= pageEnd; i++) createPageButton(i);
+  if (pageEnd < totalPages) {
+    if (pageEnd < totalPages - 1) paginationContainer.appendChild(document.createTextNode("..."));
+    createPageButton(totalPages);
+  }
+
+  // Next button
+  const nextBtn = document.createElement("button");
+  nextBtn.textContent = "ถัดไป";
+  nextBtn.className = "px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50";
+  nextBtn.disabled = AppState.currentPage === totalPages;
+  nextBtn.onclick = () => { 
+    if (AppState.currentPage < totalPages) {
+      AppState.currentPage++; 
+      renderStockPage(); 
+    }
+  };
+  paginationContainer.appendChild(nextBtn);
+}
+
+/**
+ * วาดกราฟหมวดหมู่
+ * แปลงจาก Code.js/getCategoryStockData
+ */
+async function renderCategoryChart() {
+  const canvas = document.getElementById('categoryChartCanvas');
+  if (!canvas) return;
+
+  try {
+    const snapshot = await db.collection("stock").get();
+    let categoryTotals = {};
+    
+    snapshot.forEach(doc => {
+        const data = doc.data();
+        let category = data['หมวดหมู่'];
+        let quantity = Number(data['จำนวนคงเหลือ']) || 0;
+
+        if (!categoryTotals[category]) {
+          categoryTotals[category] = 0;
+        }
+        categoryTotals[category] += quantity;
+    });
+
+    // แปลงเป็น array เพื่อ sort
+    let sortedCategories = Object.entries(categoryTotals)
+      .sort((a, b) => b[1] - a[1]); // เรียงจากมากไปน้อย
+
+    // เอาเฉพาะ Top 4
+    let topCategories = sortedCategories.slice(0, 4);
+    
+    // (Optional) รวมที่เหลือเป็น "อื่นๆ"
+    let otherTotal = sortedCategories.slice(4).reduce((acc, [, qty]) => acc + qty, 0);
+    if (otherTotal > 0) {
+        topCategories.push(["อื่นๆ", otherTotal]);
+    }
+
+    const labels = topCategories.map(([category]) => category);
+    const data = topCategories.map(([, qty]) => qty);
+
+    const ctx = canvas.getContext('2d');
+    if (AppState.categoryChartInstance) {
+      AppState.categoryChartInstance.destroy();
+    }
+
+    AppState.categoryChartInstance = new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'จำนวนสินค้า',
+          data: data,
+          backgroundColor: [
+            '#3B82F6', // blue-500
+            '#10B981', // green-500
+            '#F59E0B', // amber-500
+            '#EF4444', // red-500
+            '#6B7280'  // gray-500
+          ],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true, position: 'right' }
+        }
+      }
+    });
+
+  } catch (err) {
+      console.error("Error rendering category chart:", err);
+  }
+}
+
+// ===== Filter Functions (เหมือนเดิม) =====
+function closeFilterModal() {
+  const modal = document.getElementById("filter-modal");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+  }
+}
+
+function applySearchAndFilter(searchText = "") {
+  const categorySelect = document.getElementById("filter-category");
+  const brandSelect = document.getElementById("filter-brand");
+  const statusSelect = document.getElementById("filter-status");
+  
+  const category = categorySelect?.value || "";
+  const brand = brandSelect?.value || "";
+  const status = statusSelect?.value || "";
+
+  AppState.filteredStockData = AppState.stockData.filter(item => {
+    const matchFilter =
+      (!category || item["หมวดหมู่"] === category) &&
+      (!brand || item["ยี่ห้อ"] === brand) &&
+      (!status || item["สถานะ"] === status);
+
+    const searchMatch =
+      !searchText ||
+      item["รหัสสินค้า"]?.toLowerCase().includes(searchText) ||
+      item["หมวดหมู่"]?.toLowerCase().includes(searchText) ||
+      item["ยี่ห้อ"]?.toLowerCase().includes(searchText);
+
+    return matchFilter && searchMatch;
+  });
+
+  AppState.currentPage = 1;
+  renderStockPage();
+}
+
+function populateFilterOptions() {
+  // ฟังก์ชันนี้จะทำงานหลังจาก AppState.stockData ถูกโหลด
+  const categories = [...new Set(AppState.stockData.map(item => item["หมวดหมู่"]))].sort();
+  const brands = [...new Set(AppState.stockData.map(item => item["ยี่ห้อ"]))].sort();
+
+  const categorySelect = document.getElementById("filter-category");
+  if (categorySelect) {
+    categorySelect.innerHTML = `<option value="">ทั้งหมด</option>`;
+    categories.forEach(cat => {
+      if(cat) categorySelect.appendChild(new Option(cat, cat));
+    });
+  }
+
+  const brandSelect = document.getElementById("filter-brand");
+  if (brandSelect) {
+    brandSelect.innerHTML = `<option value="">ทั้งหมด</option>`;
+    brands.forEach(br => {
+      if(br) brandSelect.appendChild(new Option(br, br));
+    });
+  }
+}
+
+// ===== ✅ Form Submission Functions (Firestore) =====
+
+/**
+ * บันทึกฟอร์มรับสินค้า (ใช้ Transaction)
+ * แปลงจาก Code.js/addReceivingRecord
+ */
+async function submitReceivingForm(event) {
+  event.preventDefault();
+
+  const submitBtn = event.target.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  submitBtn.innerText = "กำลังบันทึก...";
+
+  // 1. ดึงข้อมูลจากฟอร์ม
+  let brandValue = document.getElementById("brand")?.value.trim() || "";
+  if (brandValue === "other") {
+    brandValue = document.getElementById("other-brand")?.value.trim() || "";
+    if (!brandValue) {
+      showToast("กรุณาระบุชื่อยี่ห้ออื่นๆ", "error");
+      submitBtn.disabled = false; submitBtn.innerText = "บันทึก";
+      return;
+    }
+  }
+
+  const record = {
+    date: document.getElementById("receive-date")?.value.trim(),
+    productCode: document.getElementById("product-code")?.value.trim(),
+    quantity: Number(document.getElementById("quantity")?.value.trim()),
+    category: document.getElementById("category")?.value.trim(),
+    brand: brandValue,
+    status: document.getElementById("categorystatus")?.value.trim(),
+    notes: document.getElementById("notes")?.value.trim() || ""
+  };
+
+  // 2. ตรวจสอบข้อมูล
+  if (!record.date || !record.productCode || !record.quantity || !record.category || !record.brand || !record.status) {
+    showToast("กรุณากรอกข้อมูลให้ครบถ้วน", "error");
+    submitBtn.disabled = false; submitBtn.innerText = "บันทึก";
+    return;
+  }
+  
+  if (record.quantity <= 0) {
+      showToast("จำนวนต้องมากกว่า 0", "error");
+      submitBtn.disabled = false; submitBtn.innerText = "บันทึก";
+      return;
+  }
+
+  try {
+    // 3. ✅ ใช้ Firestore Transaction
+    await db.runTransaction(async (transaction) => {
+      // 3.1 เพิ่มข้อมูลลง Collection 'receive'
+      const receiveRef = db.collection("receive").doc(); // สร้าง ID ใหม่
+      transaction.set(receiveRef, record);
+
+      // 3.2 ค้นหา Stock ที่ตรงกัน (ด้วยรหัสสินค้า + สถานะ)
+      const stockQuery = db.collection("stock")
+                          .where("รหัสสินค้า", "==", record.productCode)
+                          .where("สถานะ", "==", record.status);
+      
+      const stockSnapshot = await transaction.get(stockQuery);
+
+      if (stockSnapshot.empty) {
+        // 3.3 ถ้าไม่พบ: ให้สร้าง Stock ใหม่
+        console.log("ไม่พบสินค้า, สร้างใหม่...");
+        const newStockRef = db.collection("stock").doc();
+        transaction.set(newStockRef, {
+          'รหัสสินค้า': record.productCode,
+          'หมวดหมู่': record.category,
+          'ยี่ห้อ': record.brand,
+          'จำนวนคงเหลือ': record.quantity, // จำนวนตั้งต้น
+          'สถานะ': record.status
+        });
+      } else {
+        // 3.4 ถ้าพบ: ให้อัปเดตจำนวน
+        console.log("พบสินค้า, อัปเดตจำนวน...");
+        const stockDoc = stockSnapshot.docs[0];
+        const currentQty = Number(stockDoc.data()['จำนวนคงเหลือ']) || 0;
+        const newQty = currentQty + record.quantity;
+        
+        transaction.update(stockDoc.ref, { 'จำนวนคงเหลือ': newQty });
+      }
+    });
+
+    // 4. ถ้า Transaction สำเร็จ
+    showToast("บันทึกสินค้าสำเร็จ", "success");
+    event.target.reset(); // เคลียร์ฟอร์ม
+    document.getElementById("other-brand-container").classList.add("hidden");
+    document.getElementById("receive-date").value = new Date().toISOString().split('T')[0]; // ตั้งวันที่เป็นวันนี้
+    
+    // 5. ✅ รีเฟรชข้อมูล Stock ใน State
+    AppState.stockLoaded = false; // บังคับให้โหลดใหม่ในครั้งต่อไป
+    
+  } catch (err) {
+    console.error("Error submitting receiving form:", err);
+    showToast("เกิดข้อผิดพลาด: " + err.message, "error");
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerText = "บันทึก";
+  }
+}
+
+/**
+ * บันทึกฟอร์มเบิกสินค้า (ใช้ Transaction)
+ * แปลงจาก Code.js/addIssuingRecord
+ */
+async function submitIssuingForm(event) {
+  event.preventDefault();
+
+  const submitBtn = event.target.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  submitBtn.innerText = "กำลังบันทึก...";
+
+  // 1. ดึงข้อมูลจากฟอร์ม
+  let issuer = document.getElementById("requester")?.value.trim() || "";
+  if (issuer === "other") {
+    issuer = document.getElementById("other-requester")?.value.trim() || "";
+    if (!issuer) {
+      showToast("กรุณาระบุชื่อผู้เบิก", "error");
+      submitBtn.disabled = false; submitBtn.innerText = "เบิกสินค้า";
+      return;
+    }
+  }
+
+  const record = {
+    date: document.getElementById("issue-date")?.value.trim(),
+    productCode: document.getElementById("issue-product-code")?.value.trim(),
+    quantity: Number(document.getElementById("issue-quantity")?.value.trim()),
+    issuer: issuer,
+    status: document.getElementById("issue-status")?.value.trim()
+    // 'purpose' (หมายเหตุ) ไม่ได้ถูกเก็บใน Code.js เดิม ถ้าต้องการเก็บต้องเพิ่ม
+  };
+
+  // 2. ตรวจสอบข้อมูล
+  if (!record.date || !record.productCode || !record.quantity || !record.issuer || !record.status) {
+    showToast("กรุณากรอกข้อมูลให้ครบถ้วน", "error");
+    submitBtn.disabled = false; submitBtn.innerText = "เบิกสินค้า";
+    return;
+  }
+  
+  if (record.quantity <= 0) {
+      showToast("จำนวนต้องมากกว่า 0", "error");
+      submitBtn.disabled = false; submitBtn.innerText = "เบิกสินค้า";
+      return;
+  }
+
+  try {
+    // 3. ✅ ใช้ Firestore Transaction
+    await db.runTransaction(async (transaction) => {
+      // 3.1 ค้นหา Stock ที่ตรงกัน
+      const stockQuery = db.collection("stock")
+                          .where("รหัสสินค้า", "==", record.productCode)
+                          .where("สถานะ", "==", record.status);
+      
+      const stockSnapshot = await transaction.get(stockQuery);
+
+      if (stockSnapshot.empty) {
+        // 3.2 ถ้าไม่พบสินค้า: โยน Error
+        throw new Error("ไม่พบสินค้า (รหัส: " + record.productCode + ", สถานะ: " + record.status + ") ในคลัง");
+      }
+      
+      // 3.3 ถ้าพบ: ตรวจสอบจำนวน
+      const stockDoc = stockSnapshot.docs[0];
+      const currentQty = Number(stockDoc.data()['จำนวนคงเหลือ']) || 0;
+      const newQty = currentQty - record.quantity;
+
+      if (newQty < 0) {
+        // 3.4 ถ้าจำนวนไม่พอ: โยน Error
+        throw new Error("สินค้าไม่พอ! (มีอยู่ " + currentQty + " เบิก " + record.quantity + ")");
+      }
+
+      // 3.5 ถ้าทุกอย่าง OK: บันทึกการเบิก และ อัปเดต Stock
+      const issueRef = db.collection("issue").doc();
+      transaction.set(issueRef, record);
+      transaction.update(stockDoc.ref, { 'จำนวนคงเหลือ': newQty });
+    });
+
+    // 4. ถ้า Transaction สำเร็จ
+    showToast("บันทึกการเบิกสินค้าสำเร็จ", "success");
+    event.target.reset(); // เคลียร์ฟอร์ม
+    document.getElementById("other-requester-container").classList.add("hidden");
+    document.getElementById("issue-date").value = new Date().toISOString().split('T')[0];
+    
+    // 5. ✅ รีเฟรชข้อมูล Stock ใน State
+    AppState.stockLoaded = false; 
+
+  } catch (err) {
+    console.error("Error submitting issuing form:", err);
+    showToast("เกิดข้อผิดพลาด: " + err.message, "error");
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerText = "เบิกสินค้า";
+  }
+}
+
+/**
+ * บันทึกฟอร์มใบสั่งซื้อ (ใช้ WriteBatch)
+ * แปลงจาก Code.js/savePOData
+ */
+async function submitPOForm(e) {
+  e.preventDefault();
+  
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  submitBtn.innerText = "กำลังบันทึก...";
+
+  // 1. ดึงข้อมูลจากฟอร์ม
+  const purchaser = (document.getElementById("purchaser")?.value === "other")
+    ? document.getElementById("other-purchaser")?.value.trim()
+    : document.getElementById("purchaser")?.value.trim();
+
+  const receiver = (document.getElementById("receiver")?.value === "other")
+    ? document.getElementById("other-receiver")?.value.trim()
+    : document.getElementById("receiver")?.value.trim();
+
+  const productCodes = Array.from(document.getElementsByName("product-code[]")).map(input => input.value.trim());
+  const quantities = Array.from(document.getElementsByName("quantity[]")).map(input => Number(input.value.trim()));
+  
+  const poDate = document.getElementById("po-date")?.value.trim();
+  const poNumber = document.getElementById("po-number")?.value.trim();
+  const projectCode = document.getElementById("project-code")?.value.trim();
+  const poNotes = document.getElementById("po-notes")?.value.trim();
+
+  // 2. ตรวจสอบ (แบบง่าย)
+  if (!purchaser || !receiver || !poDate || !poNumber) {
+     showToast("กรุณากรอกข้อมูล PO ให้ครบถ้วน", "error");
+     submitBtn.disabled = false; submitBtn.innerText = "บันทึก";
+     return;
+  }
+  if (productCodes.some(code => code === "") || quantities.some(qty => qty <= 0)) {
+    showToast("กรุณากรอกรหัสสินค้าและจำนวนให้ถูกต้อง", "error");
+    submitBtn.disabled = false; submitBtn.innerText = "บันทึก";
+    return;
+  }
+
+  try {
+    // 3. ✅ ใช้ WriteBatch สำหรับบันทึกหลายรายการพร้อมกัน
+    const batch = db.batch();
+
+    productCodes.forEach((code, index) => {
+      const record = {
+        date: poDate,
+        productCode: code,
+        poNumber: poNumber,
+        project: projectCode || "",
+        purchaser: purchaser,
+        receiver: receiver,
+        qty: quantities[index],
+        notes: poNotes || ""
+      };
+      
+      const poRef = db.collection("po").doc(); // สร้าง ID ใหม่
+      batch.set(poRef, record);
+    });
+
+    // 4. ส่งข้อมูลทั้งหมดในครั้งเดียว
+    await batch.commit();
+
+    // 5. ถ้าสำเร็จ
+    showToast("บันทึกใบสั่งซื้อเรียบร้อยแล้ว", "success");
+    document.getElementById("po-form").reset(); // เคลียร์ฟอร์ม
+    document.getElementById('other-purchaser-container').classList.add('hidden');
+    document.getElementById('other-receiver-container').classList.add('hidden');
+    document.getElementById("po-date").value = new Date().toISOString().split('T')[0];
+    // ลบแถวสินค้าที่เพิ่มมา
+    const productList = document.getElementById("product-list");
+    const rows = productList.querySelectorAll(".product-row");
+    rows.forEach((row, index) => {
+        if (index > 0) productList.removeChild(row);
+    });
+
+  } catch (err) {
+    console.error("Error saving PO data:", err);
+    showToast("เกิดข้อผิดพลาดในการบันทึก PO", "error");
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerText = "บันทึก";
+  }
+}
+
+/**
+ * ค้นหาสต็อกปัจจุบัน (หน้าเบิกของ)
+ * แปลงจาก Code.js/getCurrentStock
+ */
+async function searchProductStock() {
+  const productCode = document.getElementById("issue-product-code")?.value.trim() || "";
+  const status = document.getElementById("issue-status")?.value.trim() || "";
+
+  if (!productCode || !status) {
+    showToast("กรุณากรอกรหัสสินค้าและเลือกสถานะก่อนค้นหา", "info", 3000);
+    return;
+  }
+
+  const currentStockInput = document.getElementById("current-stock");
+  currentStockInput.value = "กำลังค้นหา...";
+  
+  try {
+      const query = db.collection("stock")
+                      .where("รหัสสินค้า", "==", productCode)
+                      .where("สถานะ", "==", status);
+      
+      const snapshot = await query.get();
+
+      if (snapshot.empty) {
+          showToast("ไม่พบสินค้าหรือสถานะที่เลือก", "error");
+          currentStockInput.value = "";
+      } else {
+          const stockDoc = snapshot.docs[0];
+          const stockQty = stockDoc.data()['จำนวนคงเหลือ'];
+          currentStockInput.value = stockQty;
+      }
+  } catch (err) {
+      console.error("Error searching stock:", err);
+      showToast("เกิดข้อผิดพลาด: " + err.message, "error");
+      currentStockInput.value = "";
+  }
+}
+
+// ===== ✅ ค้นหาใบสั่งซื้อ (PO) (Firestore) =====
+
+/**
+ * ค้นหา PO
+ * แปลงจาก Code.js/searchPOData
+ */
+async function performPOSearch() {
+  const poNumber = document.getElementById('search-po-number').value.trim();
+  const projectCode = document.getElementById('search-project-code').value.trim();
+
+  if (!poNumber && !projectCode) {
+    showToast('กรุณากรอกอย่างน้อยหนึ่งช่องเพื่อค้นหา', "error");
+    return;
+  }
+
+  const tbody = document.getElementById('search-results-body');
+  tbody.innerHTML = `
+    <tr><td colspan="6" class="px-6 py-8 text-center text-gray-500">กำลังค้นหา...</td></tr>
+  `;
+
+  try {
+    // 1. สร้าง Query แบบไดนามิก
+    let query = db.collection("po");
+
+    if (poNumber) {
+      // Firebase ไม่รองรับ .includes() ต้องใช้ >= และ <= ในการทำ prefix search
+      // แต่วิธีที่ง่ายที่สุดคือการค้นหาแบบตรงตัว
+      query = query.where("poNumber", "==", poNumber); 
+    }
+    
+    if (projectCode) {
+      query = query.where("project", "==", projectCode);
+    }
+    
+    // (หมายเหตุ: ถ้าต้องการค้นหาแบบ "มีคำว่า" ต้องใช้บริการค้นหาตัวอื่นเช่น Algolia)
+    // (หมายเหตุ: Firestore สร้าง Index อัตโนมัติสำหรับการค้นหา 2 field ได้ แต่ถ้าซับซ้อนกว่านี้
+    //            อาจจะต้องสร้าง Index เองใน Firebase Console)
+
+    // 2. ดึงข้อมูล
+    const snapshot = await query.get();
+    
+    const results = [];
+    snapshot.forEach(doc => {
+        results.push(doc.data());
+    });
+    
+    displaySearchResults(results);
+
+  } catch (err) {
+    console.error("Search Error:", err);
+    if (err.code === 'failed-precondition') {
+        showToast("Query ซับซ้อนไป, กรุณาสร้าง Index ใน Firebase Console", "error", 5000);
+        tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-red-500">Query ล้มเหลว (ต้องการ Index)</td></tr>`;
+    } else {
+        showToast("เกิดข้อผิดพลาดในการค้นหา", "error");
+        tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-8 text-center text-red-500">เกิดข้อผิดพลาด</td></tr>`;
+    }
+  }
+}
+
+/**
+ * แสดงผลการค้นหา PO
+ */
+function displaySearchResults(results) {
+  const tbody = document.getElementById("search-results-body");
+  tbody.innerHTML = "";
+
+  if (!results || results.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+          ไม่พบข้อมูลที่ค้นหา
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  // ใช้ฟังก์ชัน formatDate (ที่เพิ่มเข้ามาใหม่)
+  results.forEach(item => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="px-6 py-4 text-sm text-gray-700">${formatDate(item["date"])}</td>
+      <td class="px-6 py-4 text-sm text-gray-700">${item["poNumber"] || '-'}</td>
+      <td class="px-6 py-4 text-sm text-gray-700">${item["productCode"] || '-'}</td>
+      <td class="px-6 py-4 text-sm text-gray-700">${item["qty"] || '-'}</td>
+      <td class="px-6 py-4 text-sm text-gray-700">${item["project"] || '-'}</td>
+      <td class="px-6 py-4 text-sm text-gray-700">${item["purchaser"] || '-'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+
+function clearPOSearch() {
+  document.getElementById('search-po-number').value = '';
+  document.getElementById('search-project-code').value = '';
+  document.getElementById('search-results-body').innerHTML = `
+    <tr>
+      <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+        กรอกฟอร์มด้านบนเพื่อค้นหาใบสั่งซื้อ
+      </td>
+    </tr>
+  `;
+}
+
+// (ฟังก์ชัน renderSearchResults ไม่ได้ถูกเรียกใช้ เลยลบออก)
+
+// เเจ้งเตือน 
+function showToast(message, type = "success", duration = 3000) {
+  const toast = document.getElementById("toast");
+  if (!toast) return;
+  
+  const toastIcon = toast.querySelector(".toast-icon");
+  const toastMessage = toast.querySelector(".toast-message");
+  const toastProgress = toast.querySelector(".toast-progress");
+
+  let icon = "";
+  if (type === "success") icon = " ✅ ";
+  else if (type === "error") icon = " 🚫 ";
+  else if (type === "info") icon = "ℹ️";
+
+  toastIcon.innerText = icon;
+  toastMessage.innerText = message;
+
+  toast.className = `toast show ${type}`;
+  toast.classList.remove("hidden");
+
+  toastProgress.style.animation = "none";
+  void toastProgress.offsetWidth; // รีสตาร์ท animation
+  toastProgress.style.animation = `progressbar ${duration}ms linear forwards`;
+
+  setTimeout(() => {
+    toast.classList.remove("show");
+    setTimeout(() => {
+      toast.classList.add("hidden");
+    }, 300);
+  }, duration);
+}
+
+// กราฟ (เหมือนเดิม)
+function renderActivityChart(data) {
+  const canvas = document.getElementById("movementChart");
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext("2d");
+  
+  if (AppState.movementChartInstance) {
+    AppState.movementChartInstance.destroy();
+  }
+
+  AppState.movementChartInstance = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: data?.labels ?? [],
+      datasets: [
+        {
+          label: "รับสินค้า",
+          data: data?.receiveData ?? [],
+          borderColor: "rgba(34,197,94,1)",
+          backgroundColor: "rgba(34,197,94,0.2)",
+          tension: 0.3,
+          fill: true
+        },
+        {
+          label: "เบิกสินค้า",
+          data: data?.issueData ?? [],
+          borderColor: "rgba(239,68,68,1)",
+          backgroundColor: "rgba(239,68,68,0.2)",
+          tension: 0.3,
+          fill: true
+        },
+        {
+          label: "ใบสั่งซื้อ",
+          data: data?.poData ?? [],
+          borderColor: "rgba(59,130,246,1)",
+          backgroundColor: "rgba(59,130,246,0.2)",
+          tension: 0.3,
+          fill: true
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { 
+          position: "top",
+          labels: { usePointStyle: true, padding: 15 }
+        },
+        tooltip: { mode: "index", intersect: false }
+      },
+      scales: {
+        y: { beginAtZero: true, ticks: { precision: 0 } },
+        x: { ticks: { maxRotation: 45, minRotation: 0 } }
+      }
+    }
+  });
+}
+
+
+// ===== ✅ Helper Functions (ดึงมาจาก Code.js) =====
+
+/**
+ * ฟังก์ชันจัดรูปแบบวันที่ (YYYY-MM-DD)
+ * (ดึงมาจาก Code.js/formatDate)
+ */
+function formatDate(dateValue) {
+  if (!dateValue) return '-';
+  
+  try {
+    // ถ้า dateValue เป็น String "YYYY-MM-DD" อยู่แล้ว ก็ใช้ได้เลย
+    if (typeof dateValue === 'string' && dateValue.length === 10) {
+        return dateValue;
+    }
+    
+    // ถ้าเป็น Timestamp ของ Firestore
+    let date;
+    if (dateValue.toDate) {
+        date = dateValue.toDate(); // แปลง Firestore Timestamp
+    } else {
+        date = new Date(dateValue); // แปลง Date Object หรือ String
+    }
+    
+    if (isNaN(date.getTime())) return dateValue.toString();
+    
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}`;
+  } catch (e) {
+    return dateValue.toString();
+  }
+}
+
+/**
+ * ฟังก์ชันคำนวณ index ของวันในช่วงเวลา (สำหรับกราฟ)
+ * (ดึงมาจาก Code.js/getDayIndex)
+ */
+function getDayIndex(date, today, days) {
+  date.setHours(0,0,0,0);
+  const diffTime = today - date;
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  if (diffDays < 0 || diffDays >= days) return -1;
+  return days - 1 - diffDays;
+}
+
+/**
+ * ฟังก์ชันจัดรูปแบบวันที่แบบสั้น (DD/MM) (สำหรับกราฟ)
+ * (ดึงมาจาก Code.js/formatDateShort)
+ */
+function formatDateShort(date) {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${day}/${month}`;
+}
+
+
+</script>
+</body>
+</html>
