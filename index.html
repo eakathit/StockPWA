@@ -653,26 +653,28 @@
               </div>
   
               <div>
-                <label for="category" class="block text-sm font-medium text-gray-700 mb-1">หมวดหมู่</label>
-                <select id="category"
-                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
-                  <option value="">เลือกหมวดหมู่</option>
-                  <option value="Adjuster pad">Adjuster pad</option>
-                  <option value="Auto Switch">Auto Switch</option>
-                  <option value="Cable">Cable</option>
-                  <option value="Cylinder (circle)">Cylinder (circle)</option>
-                  <option value="Cylinder (Large)">Cylinder (Large)</option>
-                  <option value="Guide">Guide</option>
-                  <option value="Motor">Motor</option>
-                  <option value="Others">Others</option>
-                  <option value="Photoelectric Sensors">Photoelectric Sensors</option>
-                  <option value="Pneumatic">Pneumatic</option>
-                  <option value="Proximity Sensor">Proximity Sensor</option>
-                  <option value="Sensor">Sensor</option>
-                  <option value="Solenoid valve">Solenoid valve</option>
-                  <option value="Spring">Spring</option>
-                  <option value="Toggle clamp">Toggle clamp</option>
-                </select>
+                <label for="category-input" class="block text-sm font-medium text-gray-700 mb-1">หมวดหมู่</label>
+                <input type="text" id="category-input" list="category-list"
+                       placeholder="เลือกหรือพิมพ์หมวดหมู่ใหม่..."
+                       class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                
+                <datalist id="category-list">
+                  <option value="Adjuster pad"></option>
+                  <option value="Auto Switch"></option>
+                  <option value="Cable"></option>
+                  <option value="Cylinder (circle)"></option>
+                  <option value="Cylinder (Large)"></option>
+                  <option value="Guide"></option>
+                  <option value="Motor"></option>
+                  <option value="Others"></option>
+                  <option value="Photoelectric Sensors"></option>
+                  <option value="Pneumatic"></option>
+                  <option value="Proximity Sensor"></option>
+                  <option value="Sensor"></option>
+                  <option value="Solenoid valve"></option>
+                  <option value="Spring"></option>
+                  <option value="Toggle clamp"></option>
+                </datalist>
               </div>
   
               <div>
@@ -1025,8 +1027,7 @@
       </div>
 
   <script>
-    // ✅ *** ใส่ FIREBASE CONFIG ของคุณที่นี่ ***
-    // (ไปที่ Firebase Console > Project Settings > General > Your apps > Web app)
+
     const firebaseConfig = {
   apiKey: "AIzaSyAmGbl2jSJf321zkfChmZR8aINS7QHW_uo",
   authDomain: "stockapppwa.firebaseapp.com",
@@ -1894,12 +1895,6 @@ function populateFilterOptions() {
   }
 }
 
-// ===== ✅ Form Submission Functions (Firestore) =====
-
-/**
- * บันทึกฟอร์มรับสินค้า (ใช้ Transaction)
- * แปลงจาก Code.js/addReceivingRecord
- */
 /**
  * บันทึกฟอร์มรับสินค้า (ใช้ Transaction)
  * แปลงจาก Code.js/addReceivingRecord
@@ -1923,13 +1918,13 @@ async function submitReceivingForm(event) {
   }
 
   const record = {
-    date: document.getElementById("receive-date")?.value.trim(),
-    productCode: document.getElementById("product-code")?.value.trim(),
-    quantity: Number(document.getElementById("quantity")?.value.trim()),
-    category: document.getElementById("category")?.value.trim(),
-    brand: brandValue,
-    status: document.getElementById("categorystatus")?.value.trim(),
-    notes: document.getElementById("notes")?.value.trim() || ""
+            date: document.getElementById("receive-date")?.value.trim(),
+            productCode: document.getElementById("product-code")?.value.trim(),
+            quantity: Number(document.getElementById("quantity")?.value.trim()),
+            category: document.getElementById("category-input")?.value.trim(),
+            brand: brandValue,
+            status: document.getElementById("categorystatus")?.value.trim(),
+            notes: document.getElementById("notes")?.value.trim() || ""
   };
 
   // 2. ตรวจสอบข้อมูล
