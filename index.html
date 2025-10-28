@@ -1042,7 +1042,16 @@
         <h1 class="text-2xl font-semibold text-gray-800 mb-6">ตรวจสอบใบสั่งซื้อ</h1>
   
         <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            
+            <div>
+              <label for="search-po-date" class="block text-sm font-medium text-gray-700 mb-1">
+                วันที่ (Date)
+              </label>
+              <input type="date" id="search-po-date"
+                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+            </div>
+
             <div>
               <label for="search-po-number" class="block text-sm font-medium text-gray-700 mb-1">
                 PO Number
@@ -1059,7 +1068,9 @@
                 class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
             </div>
           </div>
-  
+          
+          <p class="text-sm text-gray-500 mt-2">*กรุณากรอกอย่างน้อย 1 ช่องเพื่อค้นหา</p>
+
           <div class="mt-4 flex justify-end space-x-3">
             <button id="clear-search-btn" type="button"
               class="px-6 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
@@ -2330,10 +2341,12 @@ async function searchProductStock() {
  * แปลงจาก Code.js/searchPOData
  */
 async function performPOSearch() {
+  const poDate = document.getElementById('search-po-date').value.trim(); // <-- เพิ่มบรรทัดนี้
   const poNumber = document.getElementById('search-po-number').value.trim();
   const projectCode = document.getElementById('search-project-code').value.trim();
 
-  if (!poNumber && !projectCode) {
+  // แก้ไขเงื่อนไข: ต้องกรอกอย่างน้อย 1 ช่อง
+  if (!poNumber && !projectCode && !poDate) { // <-- แก้ไขบรรทัดนี้
     showToast('กรุณากรอกอย่างน้อยหนึ่งช่องเพื่อค้นหา', "error");
     return;
   }
@@ -2347,20 +2360,17 @@ async function performPOSearch() {
     // 1. สร้าง Query แบบไดนามิก
     let query = db.collection("po");
 
+    if (poDate) { // <-- เพิ่มเงื่อนไขนี้
+      query = query.where("date", "==", poDate);
+    }
     if (poNumber) {
-      // Firebase ไม่รองรับ .includes() ต้องใช้ >= และ <= ในการทำ prefix search
-      // แต่วิธีที่ง่ายที่สุดคือการค้นหาแบบตรงตัว
       query = query.where("poNumber", "==", poNumber); 
     }
-    
     if (projectCode) {
       query = query.where("project", "==", projectCode);
     }
     
-    // (หมายเหตุ: ถ้าต้องการค้นหาแบบ "มีคำว่า" ต้องใช้บริการค้นหาตัวอื่นเช่น Algolia)
-    // (หมายเหตุ: Firestore สร้าง Index อัตโนมัติสำหรับการค้นหา 2 field ได้ แต่ถ้าซับซ้อนกว่านี้
-    //            อาจจะต้องสร้าง Index เองใน Firebase Console)
-
+    // (ส่วนที่เหลือของฟังก์ชันเหมือนเดิม)
     // 2. ดึงข้อมูล
     const snapshot = await query.get();
     
@@ -2418,6 +2428,7 @@ function displaySearchResults(results) {
 
 
 function clearPOSearch() {
+  document.getElementById('search-po-date').value = ''; // <-- เพิ่มบรรทัดนี้
   document.getElementById('search-po-number').value = '';
   document.getElementById('search-project-code').value = '';
   document.getElementById('search-results-body').innerHTML = `
