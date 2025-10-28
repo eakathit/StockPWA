@@ -609,12 +609,12 @@
               <label for="filter-status" class="block mb-1.5 text-sm font-medium text-gray-600">สถานะ</label>
               <select id="filter-status" class="custom-select w-full border border-gray-300 px-3 py-2 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
                 <option value="">ทั้งหมด</option>
-                <option value="ปกติ">ปกติ</option>
-                <option value="ใหม่">ใหม่</option>
+                <option value="ของคงเหลือ">ของคงเหลือ</option>
+                <option value="ของคงเหลือ">ของใหม่</option>
               </select>
             </div>
           </div>
-  
+          
           <div class="flex flex-col-reverse sm:flex-row sm:justify-between gap-3 mt-6 pt-5 border-t border-gray-200">
             <button id="reset-filter-btn" class="w-full sm:w-auto px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors">
               รีเซ็ต
@@ -700,8 +700,8 @@
                 <select id="categorystatus"
                   class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
                   <option value="">เลือกสถานะ</option>
-                  <option value="ปกติ">ปกติ</option>
-                  <option value="ใหม่">ใหม่</option>
+                  <option value="ของคงเหลือ">ของคงเหลือ</option>
+                  <option value="ของใหม่">ของใหม่</option>
                 </select>
               </div>
   
@@ -773,8 +773,8 @@
                 <select id="issue-status"
                   class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
                   <option value="">เลือกสถานะ</option>
-                  <option value="ปกติ">ปกติ</option>
-                  <option value="ใหม่">ใหม่</option>
+                  <option value="ของคงเหลือ">ของคงเหลือ</option>
+                  <option value="ของใหม่">ของใหม่</option>
                 </select>
               </div>
   
@@ -1066,6 +1066,7 @@
           categoryChartInstance: null,
           isLoading: false,
           stockLoaded: false, // ✅ เพิ่ม state นี้เพื่อป้องกันการโหลดซ้ำ
+          dashboardLoaded: false, // ✅ เพิ่ม state นี้สำหรับ Dashboard
           cache: {
             stockData: null,
             dashboardData: null,
@@ -1152,10 +1153,17 @@ function initNavigation() {
     // โหลดข้อมูลตามหน้า
     switch(index) {
       case PAGES.DASHBOARD:
-        loadDashboardData();
-        loadDashboardStock();
-        loadActivityChart('7days'); 
-        renderCategoryChart();
+        // ✅ ตรวจสอบว่าโหลด Dashboard ไปหรือยัง
+        if (!AppState.dashboardLoaded) {
+          console.log("Loading Dashboard data for the first time...");
+          loadDashboardData();
+          loadDashboardStock();
+          loadActivityChart('7days'); 
+          renderCategoryChart();
+          AppState.dashboardLoaded = true; // ✅ ตั้งค่าว่าโหลดแล้ว
+        } else {
+          console.log("Dashboard data already loaded, skipping re-load.");
+        }
         break;
       case PAGES.STOCK:
         loadStockDataPage(); // โหลดข้อมูลสต็อกถ้ายังไม่มี
@@ -1618,9 +1626,11 @@ function renderStockDashboard(data) {
 
   data.forEach(item => {
     const tr = document.createElement("tr");
-    const statusClass = item['สถานะ'] === 'ใหม่'
-      ? "bg-green-100 text-green-800"
-      : "bg-gray-100 text-gray-800";
+    const statusClass = item['สถานะ'] === 'ของใหม่'
+      ? "bg-green-100 text-green-800" // สีเขียวสำหรับ 'ของใหม่'
+      : item['สถานะ'] === 'ของคงเหลือ'
+        ? "bg-orange-100 text-orange-800" // ✅ สีส้มสำหรับ 'ของคงเหลือ'
+        : "bg-gray-100 text-gray-800"; // สีเทาสำหรับสถานะอื่นๆ (เผื่อมีในอนาคต)
 
     tr.innerHTML = `
       <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item['รหัสสินค้า']}</td>
@@ -1653,9 +1663,11 @@ function renderStockPage() {
   const pageData = AppState.filteredStockData.slice(startIndex, startIndex + AppState.itemsPerPage);
 
   pageData.forEach(item => {
-    const statusClass = item['สถานะ'] === 'ใหม่'
-      ? "bg-green-100 text-green-800"
-      : "bg-gray-100 text-gray-800";
+    const statusClass = item['สถานะ'] === 'ของใหม่'
+      ? "bg-green-100 text-green-800" // สีเขียวสำหรับ 'ของใหม่'
+      : item['สถานะ'] === 'ของคงเหลือ'
+        ? "bg-orange-100 text-orange-800" // ✅ สีส้มสำหรับ 'ของคงเหลือ'
+        : "bg-gray-100 text-gray-800"; // สีเทาสำหรับสถานะอื่นๆ
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
