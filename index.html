@@ -8,7 +8,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script> 
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#3b82f6">
 
@@ -1126,9 +1127,6 @@
         <div class="loading-text">กำลังโหลดข้อมูล...</div>
       </div>
 
-  </div> </div> <script src="https://www.gstatic.com/firebasejs/9.10.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.10.0/firebase-firestore-compat.js"></script>
-
   <script>
     // ✅ *** ใส่ FIREBASE CONFIG ของคุณที่นี่ ***
     // (ไปที่ Firebase Console > Project Settings > General > Your apps > Web app)
@@ -1987,6 +1985,10 @@ function populateFilterOptions() {
  * บันทึกฟอร์มรับสินค้า (ใช้ Transaction)
  * แปลงจาก Code.js/addReceivingRecord
  */
+/**
+ * บันทึกฟอร์มรับสินค้า (ใช้ Transaction)
+ * แปลงจาก Code.js/addReceivingRecord
+ */
 async function submitReceivingForm(event) {
   event.preventDefault();
 
@@ -2029,20 +2031,23 @@ async function submitReceivingForm(event) {
   }
 
   try {
+    
+    // ✅ CHANGED: 1. ค้นหา Stock ที่ตรงกัน *ภายนอก* Transaction ก่อน
+    const stockQuery = db.collection("stock")
+                          .where("รหัสสินค้า", "==", record.productCode)
+                          .where("สถานะ", "==", record.status);
+    
+    const querySnapshot = await stockQuery.get(); // ใช้ .get() ธรรมดา
+    const stockDocRef = querySnapshot.empty ? null : querySnapshot.docs[0].ref; // เอา Reference มาเก็บไว้
+
     // 3. ✅ ใช้ Firestore Transaction
     await db.runTransaction(async (transaction) => {
       // 3.1 เพิ่มข้อมูลลง Collection 'receive'
       const receiveRef = db.collection("receive").doc(); // สร้าง ID ใหม่
       transaction.set(receiveRef, record);
 
-      // 3.2 ค้นหา Stock ที่ตรงกัน (ด้วยรหัสสินค้า + สถานะ)
-      const stockQuery = db.collection("stock")
-                          .where("รหัสสินค้า", "==", record.productCode)
-                          .where("สถานะ", "==", record.status);
-      
-      const stockSnapshot = await transaction.get(stockQuery);
-
-      if (stockSnapshot.empty) {
+      // ✅ CHANGED: 3.2 ตรวจสอบผลลัพธ์จากการ Query ด้านบน
+      if (!stockDocRef) {
         // 3.3 ถ้าไม่พบ: ให้สร้าง Stock ใหม่
         console.log("ไม่พบสินค้า, สร้างใหม่...");
         const newStockRef = db.collection("stock").doc();
@@ -2056,11 +2061,20 @@ async function submitReceivingForm(event) {
       } else {
         // 3.4 ถ้าพบ: ให้อัปเดตจำนวน
         console.log("พบสินค้า, อัปเดตจำนวน...");
-        const stockDoc = stockSnapshot.docs[0];
+        
+        // ✅ CHANGED: ต้อง .get เอกสาร *ภายใน* Transaction โดยใช้ Reference
+        const stockDoc = await transaction.get(stockDocRef);
+
+        if (!stockDoc.exists) {
+            // ป้องกันกรณีที่เอกสารถูกลบไประหว่างค้นหา
+            throw new Error("Document does not exist!");
+        }
+
         const currentQty = Number(stockDoc.data()['จำนวนคงเหลือ']) || 0;
         const newQty = currentQty + record.quantity;
         
-        transaction.update(stockDoc.ref, { 'จำนวนคงเหลือ': newQty });
+        // อัปเดตโดยใช้ Reference
+        transaction.update(stockDocRef, { 'จำนวนคงเหลือ': newQty });
       }
     });
 
@@ -2127,22 +2141,34 @@ async function submitIssuingForm(event) {
   }
 
   try {
-    // 3. ✅ ใช้ Firestore Transaction
-    await db.runTransaction(async (transaction) => {
-      // 3.1 ค้นหา Stock ที่ตรงกัน
-      const stockQuery = db.collection("stock")
+    
+    // ✅ CHANGED: 1. ค้นหา Stock ที่ตรงกัน *ภายนอก* Transaction ก่อน
+    const stockQuery = db.collection("stock")
                           .where("รหัสสินค้า", "==", record.productCode)
                           .where("สถานะ", "==", record.status);
       
-      const stockSnapshot = await transaction.get(stockQuery);
+    const querySnapshot = await stockQuery.get();
 
-      if (stockSnapshot.empty) {
-        // 3.2 ถ้าไม่พบสินค้า: โยน Error
-        throw new Error("ไม่พบสินค้า (รหัส: " + record.productCode + ", สถานะ: " + record.status + ") ในคลัง");
+    // ✅ CHANGED: 2. ตรวจสอบว่าหาสินค้าเจอก่อนเริ่ม Transaction
+    if (querySnapshot.empty) {
+      // 3.2 ถ้าไม่พบสินค้า: โยน Error
+      throw new Error("ไม่พบสินค้า (รหัส: " + record.productCode + ", สถานะ: " + record.status + ") ในคลัง");
+    }
+
+    // เอา Reference มาเก็บไว้
+    const stockDocRef = querySnapshot.docs[0].ref;
+
+    // 3. ✅ ใช้ Firestore Transaction
+    await db.runTransaction(async (transaction) => {
+      
+      // ✅ CHANGED: 3.1 .get เอกสาร *ภายใน* Transaction โดยใช้ Reference
+      const stockDoc = await transaction.get(stockDocRef);
+
+      if (!stockDoc.exists) {
+          throw new Error("ไม่พบสินค้า (อาจถูกลบระหว่างดำเนินการ)");
       }
       
       // 3.3 ถ้าพบ: ตรวจสอบจำนวน
-      const stockDoc = stockSnapshot.docs[0];
       const currentQty = Number(stockDoc.data()['จำนวนคงเหลือ']) || 0;
       const newQty = currentQty - record.quantity;
 
@@ -2154,7 +2180,7 @@ async function submitIssuingForm(event) {
       // 3.5 ถ้าทุกอย่าง OK: บันทึกการเบิก และ อัปเดต Stock
       const issueRef = db.collection("issue").doc();
       transaction.set(issueRef, record);
-      transaction.update(stockDoc.ref, { 'จำนวนคงเหลือ': newQty });
+      transaction.update(stockDocRef, { 'จำนวนคงเหลือ': newQty }); // อัปเดตโดยใช้ Reference
     });
 
     // 4. ถ้า Transaction สำเร็จ
@@ -2174,7 +2200,6 @@ async function submitIssuingForm(event) {
     submitBtn.innerText = "เบิกสินค้า";
   }
 }
-
 /**
  * บันทึกฟอร์มใบสั่งซื้อ (ใช้ WriteBatch)
  * แปลงจาก Code.js/savePOData
