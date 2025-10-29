@@ -1123,15 +1123,27 @@ document.addEventListener('DOMContentLoaded', function () {
       .catch(err => console.error('Service Worker registration failed', err));
   }
   
-  // ✅ ลบโค้ดส่วน <?= page ?> ออก
-  // ...
-
   // Hamburger Menu
   const hamburgerBtn = document.getElementById("hamburger-btn");
   const sidebar = document.querySelector(".sidebar");
   const contentArea = document.querySelector(".content-area");
 
+  // ✅ --- START OF FIX 1: ตั้งค่าเริ่มต้นสำหรับจอมือถือ ---
+  // ตรวจสอบขนาดหน้าจอเมื่อโหลดครั้งแรก
+  const isMobile = window.innerWidth <= 768;
+  if (isMobile) {
+      // ถ้าเป็นมือถือ: ซ่อนเมนู, ขยายเนื้อหา
+      sidebar.classList.add("sidebar-hidden");
+      sidebar.classList.remove("sidebar-visible"); // ลบค่า default
+      contentArea.classList.add("expanded");
+      hamburgerBtn.classList.add("shifted"); 
+  }
+  // (ถ้าไม่ใช่จอมือถือ ก็ใช้ค่า default จาก HTML (sidebar-visible) ซึ่งถูกต้องอยู่แล้ว)
+  // ✅ --- END OF FIX 1 ---
+
+
   if (hamburgerBtn) {
+    // นี่คือ Logic เดิมของคุณ (ซึ่งถูกต้อง)
     hamburgerBtn.addEventListener("click", function() {
       sidebar.classList.toggle("sidebar-hidden");
       sidebar.classList.toggle("sidebar-visible");
@@ -1139,6 +1151,22 @@ document.addEventListener('DOMContentLoaded', function () {
       hamburgerBtn.classList.toggle("shifted");
     });
   }
+
+  // ✅ --- START OF FIX 2: แตะที่เนื้อหาเพื่อปิดเมนู (สำหรับมือถือ) ---
+  if (contentArea) {
+    contentArea.addEventListener("click", function() {
+      const isMobile = window.innerWidth <= 768;
+      // ตรวจสอบว่าเมนู "เปิดอยู่" (คือ *ไม่มี* class 'sidebar-hidden')
+      const isSidebarOpen = !sidebar.classList.contains('sidebar-hidden'); 
+      
+      if (isMobile && isSidebarOpen) {
+        // ถ้าเป็นมือถือ และเมนูเปิดอยู่ -> ให้ปิดเมนู
+        // (เราสั่งให้ปุ่ม hamburger "คลิก" ตัวเองเพื่อปิด)
+        hamburgerBtn.click(); 
+      }
+    });
+  }
+  // ✅ --- END OF FIX 2 ---
 });
 
 
