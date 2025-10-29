@@ -1,5 +1,5 @@
 {
-  "name": "ระบบคลังสินค้าโรงงาน",
+  "name": "StockCheck",
   "short_name": "คลังสินค้า",
   "start_url": "/index.html",
   "display": "standalone",
