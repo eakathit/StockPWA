@@ -12,12 +12,13 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script> 
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
-  <meta name="theme-color" content="#3b82f6">
+  <meta name="theme-color" content="#f8fafc">
 
   <style>
-    /* ... (โค้ด CSS เดิมทั้งหมดของคุณ) ... */
+
     body {
       font-family: 'Prompt', sans-serif;
       background-color: #f8fafc;
@@ -62,7 +63,6 @@
   opacity: 1;
 }
 
-/* สไตล์สำหรับกล่อง Select ให้สวยงามขึ้น (เพิ่มลูกศร) */
 .custom-select {
   appearance: none;
   -webkit-appearance: none;
@@ -1990,49 +1990,61 @@ async function submitReceivingForm(event) {
 
   try {
     
-    // ✅ CHANGED: 1. ค้นหา Stock ที่ตรงกัน *ภายนอก* Transaction ก่อน
+    // 1. ค้นหา Stock ที่ตรงกัน *ภายนอก* Transaction ก่อน
     const stockQuery = db.collection("stock")
                           .where("รหัสสินค้า", "==", record.productCode)
                           .where("สถานะ", "==", record.status);
     
-    const querySnapshot = await stockQuery.get(); // ใช้ .get() ธรรมดา
-    const stockDocRef = querySnapshot.empty ? null : querySnapshot.docs[0].ref; // เอา Reference มาเก็บไว้
+    const querySnapshot = await stockQuery.get(); 
+    const stockDocRef = querySnapshot.empty ? null : querySnapshot.docs[0].ref; 
 
     // 3. ✅ ใช้ Firestore Transaction
     await db.runTransaction(async (transaction) => {
-      // 3.1 เพิ่มข้อมูลลง Collection 'receive'
-      const receiveRef = db.collection("receive").doc(); // สร้าง ID ใหม่
-      transaction.set(receiveRef, record);
+      
+      let stockDoc = null;
+      let currentQty = 0;
 
-      // ✅ CHANGED: 3.2 ตรวจสอบผลลัพธ์จากการ Query ด้านบน
-      if (!stockDocRef) {
-        // 3.3 ถ้าไม่พบ: ให้สร้าง Stock ใหม่
-        console.log("ไม่พบสินค้า, สร้างใหม่...");
+      // ✅ --- 1. ทำการ READ ทั้งหมดก่อน ---
+      // (ถ้า stockDocRef ไม่ใช่ null = เราตั้งใจจะอัปเดต)
+      if (stockDocRef) {
+        console.log("Transaction: กำลังอ่านข้อมูลสต็อกเดิม...");
+        stockDoc = await transaction.get(stockDocRef); // <-- READ
+        
+        if (stockDoc.exists) {
+          currentQty = Number(stockDoc.data()['จำนวนคงเหลือ']) || 0;
+        } else {
+          // ถ้าเกิดกรณีที่เอกสารถูกลบไประหว่างค้นหา ให้ถือว่าเป็นการสร้างใหม่
+          console.warn("StockRef มีอยู่ แต่ไม่พบเอกสารใน Transaction จะถือว่าเป็นการสร้างใหม่");
+        }
+      }
+
+      // ✅ --- 2. ทำการ WRITE ทั้งหมด ---
+
+      // 2.1 บันทึกข้อมูลการรับ (receive) (ทำเสมอ)
+      const receiveRef = db.collection("receive").doc();
+      transaction.set(receiveRef, record); // <-- WRITE
+
+      // 2.2 ตรวจสอบว่า "สร้างใหม่" หรือ "อัปเดต"
+      // (เงื่อนไข: เรามี stockDocRef และ stockDoc นั้นมีอยู่จริง)
+      if (stockDocRef && stockDoc && stockDoc.exists) {
+        
+        // --- กรณีอัปเดต ---
+        console.log("Transaction: อัปเดตสต็อกเดิม...");
+        const newQty = currentQty + record.quantity;
+        transaction.update(stockDocRef, { 'จำนวนคงเหลือ': newQty }); // <-- WRITE
+      
+      } else {
+        
+        // --- กรณีสร้างใหม่ ---
+        console.log("Transaction: สร้างสต็อกใหม่...");
         const newStockRef = db.collection("stock").doc();
-        transaction.set(newStockRef, {
+        transaction.set(newStockRef, { // <-- WRITE
           'รหัสสินค้า': record.productCode,
           'หมวดหมู่': record.category,
           'ยี่ห้อ': record.brand,
           'จำนวนคงเหลือ': record.quantity, // จำนวนตั้งต้น
           'สถานะ': record.status
         });
-      } else {
-        // 3.4 ถ้าพบ: ให้อัปเดตจำนวน
-        console.log("พบสินค้า, อัปเดตจำนวน...");
-        
-        // ✅ CHANGED: ต้อง .get เอกสาร *ภายใน* Transaction โดยใช้ Reference
-        const stockDoc = await transaction.get(stockDocRef);
-
-        if (!stockDoc.exists) {
-            // ป้องกันกรณีที่เอกสารถูกลบไประหว่างค้นหา
-            throw new Error("Document does not exist!");
-        }
-
-        const currentQty = Number(stockDoc.data()['จำนวนคงเหลือ']) || 0;
-        const newQty = currentQty + record.quantity;
-        
-        // อัปเดตโดยใช้ Reference
-        transaction.update(stockDocRef, { 'จำนวนคงเหลือ': newQty });
       }
     });
 
