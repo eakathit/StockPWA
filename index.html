@@ -5,16 +5,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>StockCheck</title>
-  <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script> 
-  
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  
-  <link rel="manifest" href="/manifest.json">
-  <link rel="icon" href="/favicon.ico" type="image/x-icon">
+
+  <link href="output.css" rel="stylesheet">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png?v=2">
+  <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192x192.png?v=2">
+  <link rel="manifest" href="manifest.json?v=2">
+
   <meta name="theme-color" content="#f8fafc">
 
   <style>
@@ -48,8 +49,6 @@
       }
     }
 
-
-/* สไตล์สำหรับ Transition ของ Modal */
 #filter-modal {
   transition: opacity 0.3s ease, visibility 0.3s ease;
 }
@@ -190,7 +189,6 @@
       font-weight: 500;
     }
 
-    /* Skeleton Loading */
     .skeleton {
       background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
       background-size: 200% 100%;
@@ -213,7 +211,6 @@
       margin-bottom: 8px;
     }
 
-    /* Fade In Animation */
     .fade-in {
       animation: fadeInUp 0.4s ease-out;
     }
@@ -230,7 +227,6 @@
       }
     }
     
-    /* ✅ แก้ไข CSS สำหรับ Sidebar & Content */
     .sidebar {
       position: fixed;
       left: 0;
@@ -261,7 +257,6 @@
       margin-left: 0;
     }
 
-    /* Hamburger button - อยู่ใน sidebar */
     #hamburger-btn {
       position: absolute;
       top: 1.5rem;
@@ -699,7 +694,14 @@
                 <input type="text" id="other-brand"
                   class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
               </div>
-  
+
+              <div>
+  <label for="item-project" class="block text-sm font-medium text-gray-700 mb-1">โปรเจกต์ (ไม่บังคับ)</label>
+  <input type="text" id="item-project"
+    placeholder="เช่น DexTech"
+    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+</div>
+
               <div>
                 <label for="categorystatus" class="block text-sm font-medium text-gray-700 mb-1">สถานะ</label>
                 <select id="categorystatus"
@@ -1055,16 +1057,13 @@
   measurementId: "G-1E5PZ6R2RD"
 };
 
-    // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     
-    // ✅ นี่คือตัวแปรหลักสำหรับเชื่อมต่อฐานข้อมูล
     const db = firebase.firestore(); 
 
   </script>
-
   <script>
-        // Constants
+
         const PAGES = {
           DASHBOARD: 0,
           STOCK: 1,
@@ -1074,17 +1073,16 @@
           SEARCH: 5
         };
 
-        // State Management
         const AppState = {
-          stockData: [], // เก็บข้อมูลดิบจาก Firestore
+          stockData: [], 
           filteredStockData: [],
           currentPage: 1,
           itemsPerPage: 30,
           movementChartInstance: null,
           categoryChartInstance: null,
           isLoading: false,
-          stockLoaded: false, // ✅ เพิ่ม state นี้เพื่อป้องกันการโหลดซ้ำ
-          dashboardLoaded: false, // ✅ เพิ่ม state นี้สำหรับ Dashboard
+          stockLoaded: false,
+          dashboardLoaded: false, 
           lastSearchResults: [],
           cache: {
             stockData: null,
@@ -1093,7 +1091,6 @@
           }
         };
 
-        // Loading Functions
         function showLoading(message = 'กำลังโหลดข้อมูล...') {
           const overlay = document.getElementById('loading-overlay');
           const loadingText = overlay?.querySelector('.loading-text');
@@ -1112,39 +1109,30 @@
           }
         }
 
-// Main Init
 document.addEventListener('DOMContentLoaded', function () {
   initNavigation();
   initEventListeners();
   
-  // ✅ PWA: ลงทะเบียน Service Worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js')
       .then(reg => console.log('Service Worker registered', reg))
       .catch(err => console.error('Service Worker registration failed', err));
   }
   
-  // Hamburger Menu
   const hamburgerBtn = document.getElementById("hamburger-btn");
   const sidebar = document.querySelector(".sidebar");
   const contentArea = document.querySelector(".content-area");
 
-  // ✅ --- START OF FIX 1: ตั้งค่าเริ่มต้นสำหรับจอมือถือ ---
-  // ตรวจสอบขนาดหน้าจอเมื่อโหลดครั้งแรก
   const isMobile = window.innerWidth <= 768;
   if (isMobile) {
-      // ถ้าเป็นมือถือ: ซ่อนเมนู, ขยายเนื้อหา
       sidebar.classList.add("sidebar-hidden");
       sidebar.classList.remove("sidebar-visible"); // ลบค่า default
       contentArea.classList.add("expanded");
       hamburgerBtn.classList.add("shifted"); 
   }
-  // (ถ้าไม่ใช่จอมือถือ ก็ใช้ค่า default จาก HTML (sidebar-visible) ซึ่งถูกต้องอยู่แล้ว)
-  // ✅ --- END OF FIX 1 ---
 
 
   if (hamburgerBtn) {
-    // นี่คือ Logic เดิมของคุณ (ซึ่งถูกต้อง)
     hamburgerBtn.addEventListener("click", function() {
       sidebar.classList.toggle("sidebar-hidden");
       sidebar.classList.toggle("sidebar-visible");
@@ -1153,25 +1141,18 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  // ✅ --- START OF FIX 2: แตะที่เนื้อหาเพื่อปิดเมนู (สำหรับมือถือ) ---
   if (contentArea) {
     contentArea.addEventListener("click", function() {
       const isMobile = window.innerWidth <= 768;
-      // ตรวจสอบว่าเมนู "เปิดอยู่" (คือ *ไม่มี* class 'sidebar-hidden')
       const isSidebarOpen = !sidebar.classList.contains('sidebar-hidden'); 
       
       if (isMobile && isSidebarOpen) {
-        // ถ้าเป็นมือถือ และเมนูเปิดอยู่ -> ให้ปิดเมนู
-        // (เราสั่งให้ปุ่ม hamburger "คลิก" ตัวเองเพื่อปิด)
         hamburgerBtn.click(); 
       }
     });
   }
-  // ✅ --- END OF FIX 2 ---
 });
 
-
-// Navigation System
 function initNavigation() {
       const navItems = document.querySelectorAll('.nav-item');
       const pages = [
@@ -1197,23 +1178,21 @@ function initNavigation() {
       navItems[index].classList.add('active');
     }
 
-    // โหลดข้อมูลตามหน้า
     switch(index) {
       case PAGES.DASHBOARD:
-        // ✅ ตรวจสอบว่าโหลด Dashboard ไปหรือยัง
         if (!AppState.dashboardLoaded) {
           console.log("Loading Dashboard data for the first time...");
           loadDashboardData();
           loadDashboardStock();
           loadActivityChart('7days'); 
           renderCategoryChart();
-          AppState.dashboardLoaded = true; // ✅ ตั้งค่าว่าโหลดแล้ว
+          AppState.dashboardLoaded = true;
         } else {
           console.log("Dashboard data already loaded, skipping re-load.");
         }
         break;
       case PAGES.STOCK:
-        loadStockDataPage(); // โหลดข้อมูลสต็อกถ้ายังไม่มี
+        loadStockDataPage();
         break;
       case PAGES.RECEIVING:
         loadReceivingPageData();
@@ -1230,7 +1209,6 @@ function initNavigation() {
     }
   }
 
-  // Bind navigation events
   document.getElementById('dashboard-nav')?.addEventListener('click', () => showPage(PAGES.DASHBOARD));
   document.getElementById('stock-nav')?.addEventListener('click', () => showPage(PAGES.STOCK));
   document.getElementById('receiving-nav')?.addEventListener('click', () => showPage(PAGES.RECEIVING));
@@ -1238,34 +1216,27 @@ function initNavigation() {
   document.getElementById('po-nav')?.addEventListener('click', () => showPage(PAGES.PO));
   document.getElementById('search-nav')?.addEventListener('click', () => showPage(PAGES.SEARCH));
 
-  // โหลดหน้าแรก
   showPage(PAGES.DASHBOARD);
 }
 
-// Event Listeners
 function initEventListeners() {
-  // ปุ่มเพิ่มสินค้าใน Dashboard
   document.getElementById('dashboard-add-btn')?.addEventListener('click', () => {
       document.getElementById('receiving-nav')?.click();
   });
 
-  // ปุ่ม "ดูทั้งหมด" ใน Dashboard
   document.getElementById('dashboard-view-all')?.addEventListener('click', (e) => {
       e.preventDefault();
       document.getElementById('stock-nav')?.click();
   });
 
-  // กราฟ
   document.getElementById('activityRange')?.addEventListener('change', function() {
       loadActivityChart(this.value);
   });
 
-  // ปุ่มเพิ่มสินค้าใน Stock Page
   document.getElementById('add-stock-btn')?.addEventListener('click', () => {
       document.getElementById('receiving-nav')?.click();
   });
 
-  // ฟิลเตอร์ Stock Page
   const searchInput = document.getElementById("search-input");
   if (searchInput) {
     let searchTimeout = null;
@@ -1278,7 +1249,6 @@ function initEventListeners() {
     });
   }
 
-  // Modal Filter
   document.getElementById("open-filter-btn")?.addEventListener("click", () => {
             const filterModal = document.getElementById("filter-modal");
             if (filterModal) {
@@ -1296,7 +1266,6 @@ function initEventListeners() {
       if (e.target.id === "filter-modal") closeFilterModal();
   });
 
-  // Apply & Reset Filter
   document.getElementById("apply-filter-btn")?.addEventListener("click", () => {
       const searchText = document.getElementById("search-input")?.value.trim().toLowerCase() || "";
       applySearchAndFilter(searchText);
@@ -1315,7 +1284,6 @@ function initEventListeners() {
       closeFilterModal();
   });
 
-  // Receiving Form
   const receivingForm = document.getElementById("receiving-form");
   if (receivingForm) {
     receivingForm.addEventListener("submit", submitReceivingForm);
@@ -1325,7 +1293,6 @@ function initEventListeners() {
     });
   }
 
-  // Brand Select (Receiving)
   document.getElementById('brand')?.addEventListener('change', function () {
       const otherBrandContainer = document.getElementById('other-brand-container');
       if (this.value === 'other') {
@@ -1335,7 +1302,6 @@ function initEventListeners() {
       }
   });
 
-  // Issuing Form
   const issuingForm = document.getElementById("issuing-form");
   if (issuingForm) {
     issuingForm.addEventListener("submit", submitIssuingForm);
@@ -1346,10 +1312,8 @@ function initEventListeners() {
     });
   }
 
-  // Search Product Button (Issuing)
   document.getElementById("search-product-btn")?.addEventListener("click", searchProductStock);
 
-  // Requester Select (Issuing)
   document.getElementById('requester')?.addEventListener('change', function () {
       const otherRequesterContainer = document.getElementById('other-requester-container');
       if (this.value === 'other') {
@@ -1359,7 +1323,6 @@ function initEventListeners() {
       }
   });
 
-  // PO Form
   const poForm = document.getElementById("po-form");
   if (poForm) {
     poForm.addEventListener("submit", submitPOForm);
@@ -1367,7 +1330,6 @@ function initEventListeners() {
         poForm.reset();
         document.getElementById('other-purchaser-container').classList.add('hidden');
         document.getElementById('other-receiver-container').classList.add('hidden');
-        // ลบแถวสินค้าที่เพิ่มมา
         const productList = document.getElementById("product-list");
         const rows = productList.querySelectorAll(".product-row");
         rows.forEach((row, index) => {
@@ -1376,7 +1338,6 @@ function initEventListeners() {
     });
   }
 
-  // Purchaser Select (PO)
   document.getElementById('purchaser')?.addEventListener('change', function () {
       const otherPurchaserContainer = document.getElementById('other-purchaser-container');
       if (this.value === 'other') {
@@ -1386,7 +1347,6 @@ function initEventListeners() {
       }
   });
 
-  // Receiver Select (PO)
   document.getElementById('receiver')?.addEventListener('change', function () {
       const otherReceiverContainer = document.getElementById('other-receiver-container');
       if (this.value === 'other') {
@@ -1396,7 +1356,6 @@ function initEventListeners() {
       }
   });
 
-  // Add/Remove Product Rows (PO)
   const addProductBtn = document.getElementById("add-product");
   const removeProductBtn = document.getElementById("remove-product");
   const productList = document.getElementById("product-list");
@@ -1423,22 +1382,14 @@ function initEventListeners() {
     });
   }
 
-  // Search Page Events
   document.getElementById('search-po-btn')?.addEventListener('click', performPOSearch);
   document.getElementById('clear-search-btn')?.addEventListener('click', clearPOSearch);
   document.getElementById('export-excel-btn')?.addEventListener('click', exportToExcel);
 }
 
 
-// ===== ✅ Data Loading Functions (Firestore) =====
-
-/**
- * โหลดข้อมูลสรุปสำหรับ Dashboard
- * แปลงจาก Code.js/getDashboardData
- */
 async function loadDashboardData() {
   try {
-    // 1. รวมจำนวนสินค้าทั้งหมดจาก Stock
     const stockSnapshot = await db.collection("stock").get();
     let totalStock = 0;
     stockSnapshot.forEach(doc => {
@@ -1446,10 +1397,9 @@ async function loadDashboardData() {
     });
     document.getElementById("total-stock").textContent = totalStock;
 
-    // 2. นับจำนวนรับเข้าวันนี้
-    const todayStr = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD"
+    const todayStr = new Date().toISOString().split('T')[0];
     const receiveSnapshot = await db.collection("receive")
-                                    .where("date", "==", todayStr) // กรองข้อมูลด้วย Firestore
+                                    .where("date", "==", todayStr) 
                                     .get();
     let receiveToday = 0;
     receiveSnapshot.forEach(doc => {
@@ -1457,9 +1407,8 @@ async function loadDashboardData() {
     });
     document.getElementById("receive-today").textContent = receiveToday;
 
-    // 3. นับจำนวนเบิกออกวันนี้
     const issueSnapshot = await db.collection("issue")
-                                  .where("date", "==", todayStr) // กรองข้อมูลด้วย Firestore
+                                  .where("date", "==", todayStr)
                                   .get();
     let issueToday = 0;
     issueSnapshot.forEach(doc => {
@@ -1473,16 +1422,12 @@ async function loadDashboardData() {
   }
 }
 
-/**
- * โหลดข้อมูลสต็อก 5 รายการสำหรับ Dashboard
- */
 async function loadDashboardStock() {
   const tbody = document.getElementById("dashboard-stock-body");
   if (!tbody) return;
-  tbody.innerHTML = ""; // เคลียร์ของเก่า
+  tbody.innerHTML = "";
   
   try {
-    // ดึงข้อมูล 5 รายการล่าสุด (ถ้ามี timestamp) หรือแค่ 5 รายการ
     const snapshot = await db.collection("stock").limit(5).get();
     const data = [];
     snapshot.forEach(doc => data.push(doc.data()));
@@ -1494,19 +1439,14 @@ async function loadDashboardStock() {
   }
 }
 
-/**
- * โหลดข้อมูลสต็อกทั้งหมดสำหรับหน้า Stock
- * แปลงจาก Code.js/getStockData
- */
 async function loadStockDataPage() {
-  if (AppState.stockLoaded) return; // ✅ ถ้ามีข้อมูลแล้วไม่โหลดซ้ำ
+  if (AppState.stockLoaded) return;
   showLoading("กำลังโหลดหน้าสต็อกสินค้า...");
   
   try {
     const snapshot = await db.collection("stock").get();
     const data = [];
     snapshot.forEach(doc => {
-        // เพิ่ม doc ID เข้าไปใน object ด้วย เผื่อต้องใช้อัปเดต
         let item = doc.data();
         item.id = doc.id; 
         data.push(item);
@@ -1514,7 +1454,7 @@ async function loadStockDataPage() {
 
     AppState.stockData = data;
     AppState.filteredStockData = [...data];
-    AppState.stockLoaded = true; // ✅ ตั้งค่าว่าโหลดแล้ว
+    AppState.stockLoaded = true;
     populateFilterOptions();
     renderStockPage();
     
@@ -1526,10 +1466,6 @@ async function loadStockDataPage() {
   }
 }
 
-/**
- * โหลดข้อมูลกราฟสถิติ
- * แปลงจาก Code.js/getActivitiesSummary
- */
 async function loadActivityChart(range) {
   if (!AppState.isLoading) {
     showLoading('กำลังโหลดข้อมูลกราฟ...');
@@ -1547,34 +1483,30 @@ async function loadActivityChart(range) {
     for (let i = days - 1; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
-      labels.push(formatDateShort(date)); // ใช้วันที่ (DD/MM) เป็น label
+      labels.push(formatDateShort(date));
     }
 
-    // เตรียมข้อมูล
     const receiveData = Array(days).fill(0);
     const issueData = Array(days).fill(0);
     const poData = Array(days).fill(0);
 
-    // คำนวณวันที่เริ่มต้น
     const startDate = new Date(today);
     startDate.setDate(startDate.getDate() - (days - 1));
-    const startDateStr = startDate.toISOString().split('T')[0]; // "YYYY-MM-DD"
-    const todayDateStr = new Date(today.getTime() + 86400000).toISOString().split('T')[0]; // +1 วันสำหรับ query
+    const startDateStr = startDate.toISOString().split('T')[0];
+    const todayDateStr = new Date(today.getTime() + 86400000).toISOString().split('T')[0];
 
-    // 1. นับข้อมูลรับสินค้า
     const receiveSnapshot = await db.collection("receive")
                                     .where("date", ">=", startDateStr)
                                     .where("date", "<", todayDateStr)
                                     .get();
     receiveSnapshot.forEach(doc => {
         const data = doc.data();
-        const rowDate = new Date(data.date + "T00:00:00"); // ป้องกัน Timezone
+        const rowDate = new Date(data.date + "T00:00:00");
         const qty = Number(data.quantity) || 0;
         const dayIndex = getDayIndex(rowDate, today, days);
         if (dayIndex >= 0) receiveData[dayIndex] += qty;
     });
 
-    // 2. นับข้อมูลเบิกสินค้า
     const issueSnapshot = await db.collection("issue")
                                   .where("date", ">=", startDateStr)
                                   .where("date", "<", todayDateStr)
@@ -1587,12 +1519,11 @@ async function loadActivityChart(range) {
         if (dayIndex >= 0) issueData[dayIndex] += qty;
     });
 
-    // 3. นับข้อมูลใบสั่งซื้อ (PO) แบบไม่ซ้ำ
     const poSnapshot = await db.collection("po")
                                .where("date", ">=", startDateStr)
                                .where("date", "<", todayDateStr)
                                .get();
-    const poCountByDate = {}; // เก็บ PO ไม่ซ้ำตามวันที่
+    const poCountByDate = {};
     poSnapshot.forEach(doc => {
         const data = doc.data();
         const rowDate = new Date(data.date + "T00:00:00");
@@ -1602,17 +1533,15 @@ async function loadActivityChart(range) {
         if (dayIndex >= 0) {
             const labelDate = labels[dayIndex];
             if (!poCountByDate[labelDate]) poCountByDate[labelDate] = new Set();
-            poCountByDate[labelDate].add(poNumber); // เพิ่ม PO เข้า set
+            poCountByDate[labelDate].add(poNumber);
         }
     });
 
-    // สร้าง poData จากจำนวน PO ไม่ซ้ำ
     for (let i = 0; i < days; i++) {
       const labelDate = labels[i];
       poData[i] = poCountByDate[labelDate] ? poCountByDate[labelDate].size : 0;
     }
 
-    // ส่งข้อมูลไปวาดกราฟ
     renderActivityChart({
       labels: labels,
       receiveData: receiveData,
@@ -1632,7 +1561,6 @@ async function loadActivityChart(range) {
 
 function loadReceivingPageData() {
   console.log("หน้ารับสินค้าถูกโหลดแล้ว (ไม่จำเป็นต้องโหลดข้อมูลล่วงหน้า)");
-  // ตั้งค่าวันที่เริ่มต้น
   const dateInput = document.getElementById("receive-date");
   if (dateInput && !dateInput.value) {
     dateInput.value = new Date().toISOString().split('T')[0];
@@ -1641,7 +1569,6 @@ function loadReceivingPageData() {
 
 function loadIssuingPageData() {
   console.log("โหลดหน้า Issuing");
-  // ตั้งค่าวันที่เริ่มต้น
   const dateInput = document.getElementById("issue-date");
   if (dateInput && !dateInput.value) {
     dateInput.value = new Date().toISOString().split('T')[0];
@@ -1650,7 +1577,6 @@ function loadIssuingPageData() {
 
 function loadPOPageData() {
   console.log("โหลดหน้า PO");
-  // ตั้งค่าวันที่เริ่มต้น
   const dateInput = document.getElementById("po-date");
   if (dateInput && !dateInput.value) {
     dateInput.value = new Date().toISOString().split('T')[0];
@@ -1661,7 +1587,6 @@ function loadSearchPageData() {
   console.log("โหลดหน้า Search");
 }
 
-// ===== Render Functions (เหมือนเดิม) =====
 function renderStockDashboard(data) {
   const tbody = document.getElementById("dashboard-stock-body");
   if (!tbody) return;
@@ -1676,22 +1601,26 @@ function renderStockDashboard(data) {
   data.forEach(item => {
     const tr = document.createElement("tr");
     const statusClass = item['สถานะ'] === 'ของใหม่'
-      ? "bg-green-100 text-green-800" // สีเขียวสำหรับ 'ของใหม่'
+      ? "bg-green-100 text-green-800"
       : item['สถานะ'] === 'ของคงเหลือ'
-        ? "bg-orange-100 text-orange-800" // ✅ สีส้มสำหรับ 'ของคงเหลือ'
-        : "bg-gray-100 text-gray-800"; // สีเทาสำหรับสถานะอื่นๆ (เผื่อมีในอนาคต)
+        ? "bg-orange-100 text-orange-800"
+        : "bg-gray-100 text-gray-800";
 
-    tr.innerHTML = `
-      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item['รหัสสินค้า']}</td>
-      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item['หมวดหมู่']}</td>
-      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item['ยี่ห้อ']}</td>
-      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item['จำนวนคงเหลือ']}</td>
-      <td class="px-6 py-4 whitespace-nowrap text-sm">
-        <span class="px-2 py-1 rounded-full text-xs font-semibold ${statusClass}">
-          ${item['สถานะ']}
-        </span>
-      </td>
-    `;
+    const projectNote = item['โปรเจกต์'] ? `<div class="text-xs text-gray-500">${item['โปรเจกต์']}</div>` : '';
+tr.innerHTML = `
+  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+    ${item['รหัสสินค้า']}
+    ${projectNote} 
+  </td>
+  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item['หมวดหมู่']}</td>
+  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item['ยี่ห้อ']}</td>
+  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item['จำนวนคงเหลือ']}</td>
+  <td class="px-6 py-4 whitespace-nowrap text-sm">
+    <span class="px-2 py-1 rounded-full text-xs font-semibold ${statusClass}">
+      ${item['สถานะ']}
+    </span>
+  </td>
+`;
     tbody.appendChild(tr);
   });
 }
@@ -1704,7 +1633,7 @@ function renderStockPage() {
   
   if (AppState.filteredStockData.length === 0) {
       tbody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-gray-500">ไม่พบข้อมูลสินค้าที่ตรงเงื่อนไข</td></tr>`;
-      renderStockPagination(); // อัปเดต pagination ด้วย
+      renderStockPagination();
       return;
   }
 
@@ -1713,21 +1642,24 @@ function renderStockPage() {
 
   pageData.forEach(item => {
     const statusClass = item['สถานะ'] === 'ของใหม่'
-      ? "bg-green-100 text-green-800" // สีเขียวสำหรับ 'ของใหม่'
+      ? "bg-green-100 text-green-800"
       : item['สถานะ'] === 'ของคงเหลือ'
-        ? "bg-orange-100 text-orange-800" // ✅ สีส้มสำหรับ 'ของคงเหลือ'
-        : "bg-gray-100 text-gray-800"; // สีเทาสำหรับสถานะอื่นๆ
-
+        ? "bg-orange-100 text-orange-800"
+        : "bg-gray-100 text-gray-800";
     const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item['รหัสสินค้า']}</td>
-      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item['หมวดหมู่']}</td>
-      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item['ยี่ห้อ']}</td>
-      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item['จำนวนคงเหลือ']}</td>
-      <td class="px-6 py-4 whitespace-nowrap text-sm">
-        <span class="px-2 py-1 rounded-full text-xs font-semibold ${statusClass}">${item['สถานะ']}</span>
-      </td>
-    `;
+    const projectNote = item['โปรเจกต์'] ? `<div class="text-xs text-gray-500">${item['โปรเจกต์']}</div>` : '';
+tr.innerHTML = `
+  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+    ${item['รหัสสินค้า']}
+    ${projectNote} 
+  </td>
+  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item['หมวดหมู่']}</td>
+  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item['ยี่ห้อ']}</td>
+  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item['จำนวนคงเหลือ']}</td>
+  <td class="px-6 py-4 whitespace-nowrap text-sm">
+    <span class="px-2 py-1 rounded-full text-xs font-semibold ${statusClass}">${item['สถานะ']}</span>
+  </td>
+`;
     tbody.appendChild(tr);
   });
 
@@ -1751,7 +1683,7 @@ function renderStockPagination() {
 
   paginationInfo.textContent = `แสดง ${(AppState.currentPage - 1) * AppState.itemsPerPage + 1} ถึง ${Math.min(AppState.currentPage * AppState.itemsPerPage, totalItems)} จาก ${totalItems} รายการ`;
 
-  if (totalPages <= 1) return; // ไม่ต้องแสดงปุ่มถ้ามีหน้าเดียว
+  if (totalPages <= 1) return;
 
   const createPageButton = (i) => {
     const btn = document.createElement("button");
@@ -1766,7 +1698,6 @@ function renderStockPagination() {
     paginationContainer.appendChild(btn);
   };
 
-  // Previous button
   const prevBtn = document.createElement("button");
   prevBtn.textContent = "ก่อนหน้า";
   prevBtn.className = "px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50";
@@ -1779,7 +1710,6 @@ function renderStockPagination() {
   };
   paginationContainer.appendChild(prevBtn);
 
-  // Page numbers (Logic เดิมดีอยู่แล้ว)
   let pageStart = Math.max(1, AppState.currentPage - 2);
   let pageEnd = Math.min(totalPages, AppState.currentPage + 2);
   if (pageStart > 1) {
@@ -1792,7 +1722,6 @@ function renderStockPagination() {
     createPageButton(totalPages);
   }
 
-  // Next button
   const nextBtn = document.createElement("button");
   nextBtn.textContent = "ถัดไป";
   nextBtn.className = "px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50";
@@ -1806,10 +1735,6 @@ function renderStockPagination() {
   paginationContainer.appendChild(nextBtn);
 }
 
-/**
- * วาดกราฟหมวดหมู่
- * แปลงจาก Code.js/getCategoryStockData
- */
 async function renderCategoryChart() {
   const canvas = document.getElementById('categoryChartCanvas');
   if (!canvas) return;
@@ -1829,14 +1754,11 @@ async function renderCategoryChart() {
         categoryTotals[category] += quantity;
     });
 
-    // แปลงเป็น array เพื่อ sort
     let sortedCategories = Object.entries(categoryTotals)
-      .sort((a, b) => b[1] - a[1]); // เรียงจากมากไปน้อย
+      .sort((a, b) => b[1] - a[1]);
 
-    // เอาเฉพาะ Top 4
     let topCategories = sortedCategories.slice(0, 4);
     
-    // (Optional) รวมที่เหลือเป็น "อื่นๆ"
     let otherTotal = sortedCategories.slice(4).reduce((acc, [, qty]) => acc + qty, 0);
     if (otherTotal > 0) {
         topCategories.push(["อื่นๆ", otherTotal]);
@@ -1858,11 +1780,11 @@ async function renderCategoryChart() {
           label: 'จำนวนสินค้า',
           data: data,
           backgroundColor: [
-            '#3B82F6', // blue-500
-            '#10B981', // green-500
-            '#F59E0B', // amber-500
-            '#EF4444', // red-500
-            '#6B7280'  // gray-500
+            '#3B82F6',
+            '#10B981',
+            '#F59E0B',
+            '#EF4444',
+            '#6B7280'
           ],
           borderWidth: 1
         }]
@@ -1881,15 +1803,13 @@ async function renderCategoryChart() {
   }
 }
 
-// ===== Filter Functions (เหมือนเดิม) =====
 function closeFilterModal() {
           const modal = document.getElementById("filter-modal");
           if (modal) {
             modal.classList.add("opacity-0", "invisible");
-            // รอให้ transition (0.3s) จบก่อน แล้วค่อยซ่อน (add 'hidden')
             setTimeout(() => {
               modal.classList.add("hidden");
-            }, 300); // 300ms ต้องตรงกับ transition-duration ใน CSS
+            }, 300);
           }
         }
 
@@ -1912,7 +1832,8 @@ function applySearchAndFilter(searchText = "") {
       !searchText ||
       item["รหัสสินค้า"]?.toLowerCase().includes(searchText) ||
       item["หมวดหมู่"]?.toLowerCase().includes(searchText) ||
-      item["ยี่ห้อ"]?.toLowerCase().includes(searchText);
+      item["ยี่ห้อ"]?.toLowerCase().includes(searchText) ||
+      item["โปรเจกต์"]?.toLowerCase().includes(searchText);
 
     return matchFilter && searchMatch;
   });
@@ -1943,10 +1864,6 @@ function populateFilterOptions() {
   }
 }
 
-/**
- * บันทึกฟอร์มรับสินค้า (ใช้ Transaction)
- * แปลงจาก Code.js/addReceivingRecord
- */
 async function submitReceivingForm(event) {
   event.preventDefault();
 
@@ -1954,7 +1871,6 @@ async function submitReceivingForm(event) {
   submitBtn.disabled = true;
   submitBtn.innerText = "กำลังบันทึก...";
 
-  // 1. ดึงข้อมูลจากฟอร์ม
   let brandValue = document.getElementById("brand")?.value.trim() || "";
   if (brandValue === "other") {
     brandValue = document.getElementById("other-brand")?.value.trim() || "";
@@ -1975,7 +1891,9 @@ async function submitReceivingForm(event) {
             notes: document.getElementById("notes")?.value.trim() || ""
   };
 
-  // 2. ตรวจสอบข้อมูล
+  // ✅ 2. เพิ่มบรรทัดนี้ เพื่อดึงค่าโปรเจกต์
+  const itemProject = document.getElementById("item-project")?.value.trim() || "";
+
   if (!record.date || !record.productCode || !record.quantity || !record.category || !record.brand || !record.status) {
     showToast("กรุณากรอกข้อมูลให้ครบถ้วน", "error");
     submitBtn.disabled = false; submitBtn.innerText = "บันทึก";
@@ -1990,7 +1908,6 @@ async function submitReceivingForm(event) {
 
   try {
     
-    // 1. ค้นหา Stock ที่ตรงกัน *ภายนอก* Transaction ก่อน
     const stockQuery = db.collection("stock")
                           .where("รหัสสินค้า", "==", record.productCode)
                           .where("สถานะ", "==", record.status);
@@ -1998,14 +1915,11 @@ async function submitReceivingForm(event) {
     const querySnapshot = await stockQuery.get(); 
     const stockDocRef = querySnapshot.empty ? null : querySnapshot.docs[0].ref; 
 
-    // 3. ✅ ใช้ Firestore Transaction
     await db.runTransaction(async (transaction) => {
       
       let stockDoc = null;
       let currentQty = 0;
 
-      // ✅ --- 1. ทำการ READ ทั้งหมดก่อน ---
-      // (ถ้า stockDocRef ไม่ใช่ null = เราตั้งใจจะอัปเดต)
       if (stockDocRef) {
         console.log("Transaction: กำลังอ่านข้อมูลสต็อกเดิม...");
         stockDoc = await transaction.get(stockDocRef); // <-- READ
@@ -2013,49 +1927,44 @@ async function submitReceivingForm(event) {
         if (stockDoc.exists) {
           currentQty = Number(stockDoc.data()['จำนวนคงเหลือ']) || 0;
         } else {
-          // ถ้าเกิดกรณีที่เอกสารถูกลบไประหว่างค้นหา ให้ถือว่าเป็นการสร้างใหม่
           console.warn("StockRef มีอยู่ แต่ไม่พบเอกสารใน Transaction จะถือว่าเป็นการสร้างใหม่");
         }
       }
 
-      // ✅ --- 2. ทำการ WRITE ทั้งหมด ---
-
-      // 2.1 บันทึกข้อมูลการรับ (receive) (ทำเสมอ)
       const receiveRef = db.collection("receive").doc();
-      transaction.set(receiveRef, record); // <-- WRITE
+      transaction.set(receiveRef, record);
 
-      // 2.2 ตรวจสอบว่า "สร้างใหม่" หรือ "อัปเดต"
-      // (เงื่อนไข: เรามี stockDocRef และ stockDoc นั้นมีอยู่จริง)
       if (stockDocRef && stockDoc && stockDoc.exists) {
         
         // --- กรณีอัปเดต ---
         console.log("Transaction: อัปเดตสต็อกเดิม...");
         const newQty = currentQty + record.quantity;
-        transaction.update(stockDocRef, { 'จำนวนคงเหลือ': newQty }); // <-- WRITE
+        transaction.update(stockDocRef, { 
+    'จำนวนคงเหลือ': newQty,
+    'โปรเจกต์': itemProject // ✅ เพิ่ม key/value นี้
+});
       
       } else {
         
-        // --- กรณีสร้างใหม่ ---
         console.log("Transaction: สร้างสต็อกใหม่...");
         const newStockRef = db.collection("stock").doc();
-        transaction.set(newStockRef, { // <-- WRITE
-          'รหัสสินค้า': record.productCode,
-          'หมวดหมู่': record.category,
-          'ยี่ห้อ': record.brand,
-          'จำนวนคงเหลือ': record.quantity, // จำนวนตั้งต้น
-          'สถานะ': record.status
-        });
+        transaction.set(newStockRef, { 
+      'รหัสสินค้า': record.productCode,
+      'หมวดหมู่': record.category,
+      'ยี่ห้อ': record.brand,
+      'จำนวนคงเหลือ': record.quantity,
+      'สถานะ': record.status,
+      'โปรเจกต์': itemProject // ✅ เพิ่ม key/value นี้
+    });
       }
     });
 
-    // 4. ถ้า Transaction สำเร็จ
     showToast("บันทึกสินค้าสำเร็จ", "success");
-    event.target.reset(); // เคลียร์ฟอร์ม
+    event.target.reset();
     document.getElementById("other-brand-container").classList.add("hidden");
-    document.getElementById("receive-date").value = new Date().toISOString().split('T')[0]; // ตั้งวันที่เป็นวันนี้
+    document.getElementById("receive-date").value = new Date().toISOString().split('T')[0];
     
-    // 5. ✅ รีเฟรชข้อมูล Stock ใน State
-    AppState.stockLoaded = false; // บังคับให้โหลดใหม่ในครั้งต่อไป
+    AppState.stockLoaded = false;
     
   } catch (err) {
     console.error("Error submitting receiving form:", err);
@@ -2066,10 +1975,6 @@ async function submitReceivingForm(event) {
   }
 }
 
-/**
- * บันทึกฟอร์มเบิกสินค้า (ใช้ Transaction)
- * แปลงจาก Code.js/addIssuingRecord
- */
 async function submitIssuingForm(event) {
   event.preventDefault();
 
@@ -2077,7 +1982,6 @@ async function submitIssuingForm(event) {
   submitBtn.disabled = true;
   submitBtn.innerText = "กำลังบันทึก...";
 
-  // 1. ดึงข้อมูลจากฟอร์ม
   let issuer = document.getElementById("requester")?.value.trim() || "";
   if (issuer === "other") {
     issuer = document.getElementById("other-requester")?.value.trim() || "";
@@ -2094,10 +1998,8 @@ async function submitIssuingForm(event) {
     quantity: Number(document.getElementById("issue-quantity")?.value.trim()),
     issuer: issuer,
     status: document.getElementById("issue-status")?.value.trim()
-    // 'purpose' (หมายเหตุ) ไม่ได้ถูกเก็บใน Code.js เดิม ถ้าต้องการเก็บต้องเพิ่ม
   };
 
-  // 2. ตรวจสอบข้อมูล
   if (!record.date || !record.productCode || !record.quantity || !record.issuer || !record.status) {
     showToast("กรุณากรอกข้อมูลให้ครบถ้วน", "error");
     submitBtn.disabled = false; submitBtn.innerText = "เบิกสินค้า";
@@ -2112,54 +2014,46 @@ async function submitIssuingForm(event) {
 
   try {
     
-    // ✅ CHANGED: 1. ค้นหา Stock ที่ตรงกัน *ภายนอก* Transaction ก่อน
     const stockQuery = db.collection("stock")
                           .where("รหัสสินค้า", "==", record.productCode)
                           .where("สถานะ", "==", record.status);
       
     const querySnapshot = await stockQuery.get();
 
-    // ✅ CHANGED: 2. ตรวจสอบว่าหาสินค้าเจอก่อนเริ่ม Transaction
     if (querySnapshot.empty) {
-      // 3.2 ถ้าไม่พบสินค้า: โยน Error
       throw new Error("ไม่พบสินค้า (รหัส: " + record.productCode + ", สถานะ: " + record.status + ") ในคลัง");
     }
 
-    // เอา Reference มาเก็บไว้
     const stockDocRef = querySnapshot.docs[0].ref;
 
-    // 3. ✅ ใช้ Firestore Transaction
     await db.runTransaction(async (transaction) => {
       
-      // ✅ CHANGED: 3.1 .get เอกสาร *ภายใน* Transaction โดยใช้ Reference
       const stockDoc = await transaction.get(stockDocRef);
 
       if (!stockDoc.exists) {
           throw new Error("ไม่พบสินค้า (อาจถูกลบระหว่างดำเนินการ)");
       }
       
-      // 3.3 ถ้าพบ: ตรวจสอบจำนวน
       const currentQty = Number(stockDoc.data()['จำนวนคงเหลือ']) || 0;
       const newQty = currentQty - record.quantity;
 
       if (newQty < 0) {
-        // 3.4 ถ้าจำนวนไม่พอ: โยน Error
         throw new Error("สินค้าไม่พอ! (มีอยู่ " + currentQty + " เบิก " + record.quantity + ")");
       }
 
-      // 3.5 ถ้าทุกอย่าง OK: บันทึกการเบิก และ อัปเดต Stock
       const issueRef = db.collection("issue").doc();
       transaction.set(issueRef, record);
-      transaction.update(stockDocRef, { 'จำนวนคงเหลือ': newQty }); // อัปเดตโดยใช้ Reference
+      transaction.update(stockDocRef, { 
+    'จำนวนคงเหลือ': newQty,
+    'โปรเจกต์': itemProject // ✅ เพิ่ม key/value นี้
+});
     });
 
-    // 4. ถ้า Transaction สำเร็จ
     showToast("บันทึกการเบิกสินค้าสำเร็จ", "success");
-    event.target.reset(); // เคลียร์ฟอร์ม
+    event.target.reset();
     document.getElementById("other-requester-container").classList.add("hidden");
     document.getElementById("issue-date").value = new Date().toISOString().split('T')[0];
     
-    // 5. ✅ รีเฟรชข้อมูล Stock ใน State
     AppState.stockLoaded = false; 
 
   } catch (err) {
@@ -2170,10 +2064,7 @@ async function submitIssuingForm(event) {
     submitBtn.innerText = "เบิกสินค้า";
   }
 }
-/**
- * บันทึกฟอร์มใบสั่งซื้อ (ใช้ WriteBatch)
- * แปลงจาก Code.js/savePOData
- */
+
 async function submitPOForm(e) {
   e.preventDefault();
   
@@ -2181,7 +2072,6 @@ async function submitPOForm(e) {
   submitBtn.disabled = true;
   submitBtn.innerText = "กำลังบันทึก...";
 
-  // 1. ดึงข้อมูลจากฟอร์ม
   const purchaser = (document.getElementById("purchaser")?.value === "other")
     ? document.getElementById("other-purchaser")?.value.trim()
     : document.getElementById("purchaser")?.value.trim();
@@ -2199,14 +2089,12 @@ async function submitPOForm(e) {
   const projectCode = document.getElementById("project-code")?.value.trim();
   const poNotes = document.getElementById("po-notes")?.value.trim();
 
-  // 2. ตรวจสอบ (แบบง่าย)
   if (!purchaser || !receiver || !poDate || !poNumber) {
      showToast("กรุณากรอกข้อมูล PO ให้ครบถ้วน", "error");
      submitBtn.disabled = false; submitBtn.innerText = "บันทึก";
      return;
   }
   
-  // ✅ อัปเดตเงื่อนไขตรวจสอบ
   if (productCodes.some(code => code === "") || quantities.some(qty => qty <= 0) || unitPrices.some(price => price < 0)) {
     showToast("กรุณากรอกรหัสสินค้า, จำนวน, และราคาให้ถูกต้อง", "error");
     submitBtn.disabled = false; submitBtn.innerText = "บันทึก";
@@ -2214,7 +2102,6 @@ async function submitPOForm(e) {
   }
 
   try {
-    // 3. ✅ ใช้ WriteBatch สำหรับบันทึกหลายรายการพร้อมกัน
     const batch = db.batch();
 
     productCodes.forEach((code, index) => {
@@ -2226,24 +2113,21 @@ async function submitPOForm(e) {
         purchaser: purchaser,
         receiver: receiver,
         qty: quantities[index],
-        unitPrice: unitPrices[index] || 0, // ✅ เพิ่ม field นี้
+        unitPrice: unitPrices[index] || 0,
         notes: poNotes || ""
       };
       
-      const poRef = db.collection("po").doc(); // สร้าง ID ใหม่
+      const poRef = db.collection("po").doc();
       batch.set(poRef, record);
     });
 
-    // 4. ส่งข้อมูลทั้งหมดในครั้งเดียว
     await batch.commit();
 
-    // 5. ถ้าสำเร็จ
     showToast("บันทึกใบสั่งซื้อเรียบร้อยแล้ว", "success");
-    document.getElementById("po-form").reset(); // เคลียร์ฟอร์ม
+    document.getElementById("po-form").reset();
     document.getElementById('other-purchaser-container').classList.add('hidden');
     document.getElementById('other-receiver-container').classList.add('hidden');
     document.getElementById("po-date").value = new Date().toISOString().split('T')[0];
-    // ลบแถวสินค้าที่เพิ่มมา
     const productList = document.getElementById("product-list");
     const rows = productList.querySelectorAll(".product-row");
     rows.forEach((row, index) => {
@@ -2259,17 +2143,13 @@ async function submitPOForm(e) {
   }
 }
 
-/**
- * ค้นหาสต็อกปัจจุบัน (หน้าเบิกของ)
- * แปลงจาก Code.js/getCurrentStock
- */
 async function searchProductStock() {
   const productCode = document.getElementById("issue-product-code")?.value.trim() || "";
   const status = document.getElementById("issue-status")?.value.trim() || "";
 
   if (!productCode || !status) {
     showToast("กรุณากรอกรหัสสินค้าและเลือกสถานะก่อนค้นหา", "info", 3000);
-    return;
+    return; // ⬅️ หยุดการทำงานทันที
   }
 
   const currentStockInput = document.getElementById("current-stock");
@@ -2297,19 +2177,12 @@ async function searchProductStock() {
   }
 }
 
-// ===== ✅ ค้นหาใบสั่งซื้อ (PO) (Firestore) =====
-
-/**
- * ค้นหา PO
- * แปลงจาก Code.js/searchPOData
- */
 async function performPOSearch() {
   const poDate = document.getElementById('search-po-date').value.trim(); // <-- เพิ่มบรรทัดนี้
   const poNumber = document.getElementById('search-po-number').value.trim();
   const projectCode = document.getElementById('search-project-code').value.trim();
 
-  // แก้ไขเงื่อนไข: ต้องกรอกอย่างน้อย 1 ช่อง
-  if (!poNumber && !projectCode && !poDate) { // <-- แก้ไขบรรทัดนี้
+  if (!poNumber && !projectCode && !poDate) {
     showToast('กรุณากรอกอย่างน้อยหนึ่งช่องเพื่อค้นหา', "error");
     return;
   }
@@ -2320,10 +2193,9 @@ async function performPOSearch() {
   `;
 
   try {
-    // 1. สร้าง Query แบบไดนามิก
     let query = db.collection("po");
 
-    if (poDate) { // <-- เพิ่มเงื่อนไขนี้
+    if (poDate) {
       query = query.where("date", "==", poDate);
     }
     if (poNumber) {
@@ -2332,9 +2204,7 @@ async function performPOSearch() {
     if (projectCode) {
       query = query.where("project", "==", projectCode);
     }
-    
-    // (ส่วนที่เหลือของฟังก์ชันเหมือนเดิม)
-    // 2. ดึงข้อมูล
+
     const snapshot = await query.get();
     
     const results = [];
@@ -2357,9 +2227,6 @@ async function performPOSearch() {
   }
 }
 
-/**
- * แสดงผลการค้นหา PO
- */
 function displaySearchResults(results) {
   const tbody = document.getElementById("search-results-body");
   tbody.innerHTML = "";
@@ -2375,7 +2242,6 @@ function displaySearchResults(results) {
     return;
   }
 
-  // ใช้ฟังก์ชัน formatDate (ที่เพิ่มเข้ามาใหม่)
   results.forEach(item => {
     const tr = document.createElement("tr");
     tr.innerHTML = `
@@ -2394,7 +2260,7 @@ function displaySearchResults(results) {
 
 
 function clearPOSearch() {
-  document.getElementById('search-po-date').value = ''; // <-- เพิ่มบรรทัดนี้
+  document.getElementById('search-po-date').value = '';
   document.getElementById('search-po-number').value = '';
   document.getElementById('search-project-code').value = '';
 
@@ -2416,50 +2282,42 @@ function exportToExcel() {
     return;
   }
 
-  // 1. จัดรูปแบบข้อมูล (เราจะส่ง "ราคาต่อหน่วย" เป็นตัวเลขดิบ)
   const dataToExport = AppState.lastSearchResults.map(item => ({
     'วันที่': item.date,
     'PO Number': item.poNumber,
     'รหัสสินค้า': item.productCode,
     'จำนวน': item.qty,
-    'ราคาต่อหน่วย': item.unitPrice || 0, // ✅ ส่งเป็นตัวเลข
+    'ราคาต่อหน่วย': item.unitPrice || 0,
     'รหัสโปรเจกต์': item.project,
     'ผู้สั่งซื้อ': item.purchaser,
     'ผู้รับ': item.receiver,
     'หมายเหตุ': item.notes
   }));
 
-  // 2. สร้าง Worksheet
   const ws = XLSX.utils.json_to_sheet(dataToExport);
 
-  // 3. ✅ (ส่วนที่เพิ่มเข้ามา) จัดรูปแบบคอลัมน์ "ราคาต่อหน่วย"
   try {
     const range = XLSX.utils.decode_range(ws['!ref']);
-    const colIndex = 4; // 0=A, 1=B, 2=C, 3=D, 4=E (คอลัมน์ราคาต่อหน่วย)
+    const colIndex = 4;
 
-    // วนลูปตั้งแต่แถวที่ 2 (ข้ามหัวตาราง)
     for (let R = range.s.r + 1; R <= range.e.r; ++R) {
       const cell_address = XLSX.utils.encode_cell({r: R, c: colIndex});
       if (ws[cell_address]) {
-        ws[cell_address].t = 'n'; // ตั้งค่า Type เป็น Number
-        ws[cell_address].z = '0.00'; // ตั้งค่า Format เป็น "0.00"
+        ws[cell_address].t = 'n';
+        ws[cell_address].z = '0.00';
       }
     }
   } catch (e) {
     console.error("Error formatting Excel cells:", e);
   }
-  // ✅ สิ้นสุดส่วนที่เพิ่ม
 
-  // 4. สร้าง Workbook
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "PO_Results"); // ตั้งชื่อ Sheet
+  XLSX.utils.book_append_sheet(wb, ws, "PO_Results");
 
-  // 5. สั่งดาวน์โหลด
   showToast("กำลังดาวน์โหลดไฟล์ Excel...", "info");
-  XLSX.writeFile(wb, "po_export.xlsx"); // ตั้งชื่อไฟล์
+  XLSX.writeFile(wb, "po_export.xlsx");
 }
 
-// เเจ้งเตือน 
 function showToast(message, type = "success", duration = 3000) {
   const toast = document.getElementById("toast");
   if (!toast) return;
@@ -2480,7 +2338,7 @@ function showToast(message, type = "success", duration = 3000) {
   toast.classList.remove("hidden");
 
   toastProgress.style.animation = "none";
-  void toastProgress.offsetWidth; // รีสตาร์ท animation
+  void toastProgress.offsetWidth; 
   toastProgress.style.animation = `progressbar ${duration}ms linear forwards`;
 
   setTimeout(() => {
@@ -2491,7 +2349,6 @@ function showToast(message, type = "success", duration = 3000) {
   }, duration);
 }
 
-// กราฟ (เหมือนเดิม)
 function renderActivityChart(data) {
   const canvas = document.getElementById("movementChart");
   if (!canvas) return;
@@ -2552,28 +2409,19 @@ function renderActivityChart(data) {
   });
 }
 
-
-// ===== ✅ Helper Functions (ดึงมาจาก Code.js) =====
-
-/**
- * ฟังก์ชันจัดรูปแบบวันที่ (YYYY-MM-DD)
- * (ดึงมาจาก Code.js/formatDate)
- */
 function formatDate(dateValue) {
   if (!dateValue) return '-';
   
   try {
-    // ถ้า dateValue เป็น String "YYYY-MM-DD" อยู่แล้ว ก็ใช้ได้เลย
     if (typeof dateValue === 'string' && dateValue.length === 10) {
         return dateValue;
     }
     
-    // ถ้าเป็น Timestamp ของ Firestore
     let date;
     if (dateValue.toDate) {
-        date = dateValue.toDate(); // แปลง Firestore Timestamp
+        date = dateValue.toDate();
     } else {
-        date = new Date(dateValue); // แปลง Date Object หรือ String
+        date = new Date(dateValue);
     }
     
     if (isNaN(date.getTime())) return dateValue.toString();
@@ -2588,10 +2436,6 @@ function formatDate(dateValue) {
   }
 }
 
-/**
- * ฟังก์ชันคำนวณ index ของวันในช่วงเวลา (สำหรับกราฟ)
- * (ดึงมาจาก Code.js/getDayIndex)
- */
 function getDayIndex(date, today, days) {
   date.setHours(0,0,0,0);
   const diffTime = today - date;
@@ -2600,16 +2444,11 @@ function getDayIndex(date, today, days) {
   return days - 1 - diffDays;
 }
 
-/**
- * ฟังก์ชันจัดรูปแบบวันที่แบบสั้น (DD/MM) (สำหรับกราฟ)
- * (ดึงมาจาก Code.js/formatDateShort)
- */
 function formatDateShort(date) {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${day}/${month}`;
 }
-
 
 </script>
 </body>
