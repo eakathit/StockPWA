@@ -749,7 +749,8 @@
               <div>
                 <label for="current-stock"
                   class="block text-sm font-medium text-gray-700 mb-1">จำนวนคงเหลือปัจจุบัน</label>
-                <input type="number" id="current-stock"
+                
+                <input type="text" id="current-stock"
                   class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-100"
                   readonly>
               </div>
@@ -1081,6 +1082,7 @@
 document.addEventListener('DOMContentLoaded', function () {
   initNavigation();
   initEventListeners();
+  populateFilterOptions();
   
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js')
@@ -1236,21 +1238,20 @@ function initEventListeners() {
   });
 
   document.getElementById("apply-filter-btn")?.addEventListener("click", () => {
-      const searchText = document.getElementById("search-input")?.value.trim().toLowerCase() || "";
-      applySearchAndFilter(searchText);
-      closeFilterModal();
-  });
+    const searchText = document.getElementById("search-input")?.value.trim().toLowerCase() || "";
+    applySearchAndFilter(searchText); // <-- เอากลับมา
+    closeFilterModal();
+});
 
   document.getElementById("reset-filter-btn")?.addEventListener("click", () => {
-      document.getElementById("filter-category").value = "";
-      document.getElementById("filter-brand").value = "";
-      document.getElementById("search-input").value = "";
-      
-      AppState.filteredStockData = [...AppState.stockData];
-      AppState.currentPage = 1;
-      renderStockPage();
-      closeFilterModal();
-  });
+    document.getElementById("filter-category").value = "";
+    document.getElementById("filter-brand").value = "";
+    document.getElementById("search-input").value = "";
+
+    document.getElementById("s")
+    applySearchAndFilter(""); // <-- เรียกตัวนี้แทน
+    closeFilterModal();
+});
 
   const receivingForm = document.getElementById("receiving-form");
   if (receivingForm) {
@@ -1356,14 +1357,18 @@ function initEventListeners() {
 }
 
 
+// === นี่คือจุดที่แก้ไข (2) ===
 async function loadDashboardData() {
   try {
-    const stockSnapshot = await db.collection("stock").get();
-    let totalStock = 0;
-    stockSnapshot.forEach(doc => {
-      totalStock += Number(doc.data()['จำนวนคงเหลือ']) || 0;
-    });
-    document.getElementById("total-stock").textContent = totalStock;
+    // อ่าน "ป้ายสรุป" แค่ 1 ไฟล์
+    const summaryDoc = await db.collection("summary").doc("stats").get();
+
+    if (summaryDoc.exists) {
+      const totalStock = summaryDoc.data().totalStockCount || 0;
+      document.getElementById("total-stock").textContent = totalStock;
+    } else {
+      document.getElementById("total-stock").textContent = "N/A"; // ถ้ายังไม่มีป้ายสรุป
+    }
 
     const todayStr = new Date().toISOString().split('T')[0];
     const receiveSnapshot = await db.collection("receive")
@@ -1408,11 +1413,17 @@ async function loadDashboardStock() {
 }
 
 async function loadStockDataPage() {
-  if (AppState.stockLoaded) return;
+  // เราจะอ่าน 1,300 รายการแค่ "ครั้งเดียว"
+  if (AppState.stockLoaded) {
+    // ถ้าโหลดแล้ว ให้ใช้ข้อมูลเก่า
+    renderStockPage();
+    return; 
+  }
+
   showLoading("กำลังโหลดหน้าสต็อกสินค้า...");
-  
+
   try {
-    const snapshot = await db.collection("stock").get();
+    const snapshot = await db.collection("stock").get(); // <-- อ่านทั้งหมด 1,300+
     const data = [];
     snapshot.forEach(doc => {
         let item = doc.data();
@@ -1420,12 +1431,14 @@ async function loadStockDataPage() {
         data.push(item);
     });
 
-    AppState.stockData = data;
-    AppState.filteredStockData = [...data];
-    AppState.stockLoaded = true;
-    populateFilterOptions();
-    renderStockPage();
-    
+    AppState.stockData = data; // เก็บตัวหลัก
+    AppState.filteredStockData = [...data]; // เก็บตัวกรอง
+    AppState.stockLoaded = true; // ตั้งค่าว่าโหลดแล้ว
+
+    // เราไม่เรียก populateFilterOptions() จากที่นี่แล้ว (เพราะมันถูกเรียกตอนเปิดแอป)
+
+    renderStockPage(); // สั่งแสดงผล (จะไปถูก .slice() ใน renderStockPage เอง)
+
   } catch (err) {
       console.error("Error loading stock data:", err);
       showToast("เกิดข้อผิดพลาดในการโหลดข้อมูลสต็อก", "error");
@@ -1585,34 +1598,37 @@ tr.innerHTML = `
 function renderStockPage() {
   const tbody = document.getElementById("stock-table-body");
   if (!tbody) return;
-  
+
   tbody.innerHTML = "";
-  
+
+  // เราจะใช้ filteredStockData ที่ตอนนี้มี 1,300+ รายการ
   if (AppState.filteredStockData.length === 0) {
       tbody.innerHTML = `<tr><td colspan="4" class="text-center p-8 text-gray-500">ไม่พบข้อมูลสินค้าที่ตรงเงื่อนไข</td></tr>`;
-      renderStockPagination();
+      renderStockPagination(); // <-- เรียกตัวเก่า
       return;
   }
 
+  // --- นี่คือส่วนที่เอากลับมา (การแบ่งหน้า Client-side) ---
   const startIndex = (AppState.currentPage - 1) * AppState.itemsPerPage;
   const pageData = AppState.filteredStockData.slice(startIndex, startIndex + AppState.itemsPerPage);
+  // --- จบส่วนที่เอากลับมา ---
 
   pageData.forEach(item => {
     const tr = document.createElement("tr");
     const projectNote = item['โปรเจกต์'] ? `<div class="text-xs text-gray-500">${item['โปรเจกต์']}</div>` : '';
-tr.innerHTML = `
-  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-    ${item['รหัสสินค้า']}
-    ${projectNote} 
-  </td>
-  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item['หมวดหมู่']}</td>
-  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item['ยี่ห้อ']}</td>
-  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item['จำนวนคงเหลือ']}</td>
-`;
+    tr.innerHTML = `
+      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+        ${item['รหัสสินค้า']}
+        ${projectNote} 
+      </td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item['หมวดหมู่']}</td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item['ยี่ห้อ']}</td>
+      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item['จำนวนคงเหลือ']}</td>
+    `;
     tbody.appendChild(tr);
   });
 
-  renderStockPagination();
+  renderStockPagination(); // <-- เรียกตัวเก่า
 }
 
 function renderStockPagination() {
@@ -1622,7 +1638,7 @@ function renderStockPagination() {
 
   paginationContainer.innerHTML = "";
   const totalItems = AppState.filteredStockData.length;
-  
+
   if (totalItems === 0) {
       paginationInfo.textContent = "ไม่พบข้อมูล";
       return;
@@ -1642,7 +1658,7 @@ function renderStockPagination() {
       : "px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50";
     btn.onclick = () => {
       AppState.currentPage = i;
-      renderStockPage();
+      renderStockPage(); // <-- เรียก renderStockPage (ไม่ใช่ loadStockDataPage)
     };
     paginationContainer.appendChild(btn);
   };
@@ -1684,25 +1700,29 @@ function renderStockPagination() {
   paginationContainer.appendChild(nextBtn);
 }
 
+
+// === นี่คือจุดที่แก้ไข (3) ===
 async function renderCategoryChart() {
   const canvas = document.getElementById('categoryChartCanvas');
   if (!canvas) return;
 
   try {
-    const snapshot = await db.collection("stock").get();
-    let categoryTotals = {};
+    // อ่าน "ป้ายสรุป" แค่ 1 ไฟล์
+    const summaryDoc = await db.collection("summary").doc("stats").get();
+
+    if (!summaryDoc.exists) {
+      const ctx = canvas.getContext('2d');
+      if (AppState.categoryChartInstance) AppState.categoryChartInstance.destroy();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#9ca3af'; 
+      ctx.textAlign = 'center';
+      ctx.fillText('กำลังรอข้อมูลสรุป...', canvas.width / 2, canvas.height / 2);
+      return;
+    }
+
+    // เอาข้อมูลมาจาก "ป้ายสรุป" (ไม่ต้องนับ 1,300 รายการ)
+    let categoryTotals = summaryDoc.data().categoryCounts || {};
     
-    snapshot.forEach(doc => {
-        const data = doc.data();
-        let category = data['หมวดหมู่'];
-        let quantity = Number(data['จำนวนคงเหลือ']) || 0;
-
-        if (!categoryTotals[category]) {
-          categoryTotals[category] = 0;
-        }
-        categoryTotals[category] += quantity;
-    });
-
     let sortedCategories = Object.entries(categoryTotals)
       .sort((a, b) => b[1] - a[1]);
 
@@ -1765,15 +1785,17 @@ function closeFilterModal() {
 function applySearchAndFilter(searchText = "") {
   const categorySelect = document.getElementById("filter-category");
   const brandSelect = document.getElementById("filter-brand");
-  
+
   const category = categorySelect?.value || "";
   const brand = brandSelect?.value || "";
 
+  // เราจะกรองจาก "stockData" (ตัวหลัก 1,300+ รายการ)
   AppState.filteredStockData = AppState.stockData.filter(item => {
     const matchFilter =
       (!category || item["หมวดหมู่"] === category) &&
       (!brand || item["ยี่ห้อ"] === brand);
 
+    // --- นี่คือส่วนที่เอากลับมา (การค้นหา Client-side) ---
     const searchMatch =
       !searchText ||
       item["รหัสสินค้า"]?.toLowerCase().includes(searchText) ||
@@ -1782,31 +1804,48 @@ function applySearchAndFilter(searchText = "") {
       item["โปรเจกต์"]?.toLowerCase().includes(searchText);
 
     return matchFilter && searchMatch;
+    // --- จบส่วนที่เอากลับมา ---
   });
 
   AppState.currentPage = 1;
   renderStockPage();
 }
 
-function populateFilterOptions() {
-  // ฟังก์ชันนี้จะทำงานหลังจาก AppState.stockData ถูกโหลด
-  const categories = [...new Set(AppState.stockData.map(item => item["หมวดหมู่"]))].sort();
-  const brands = [...new Set(AppState.stockData.map(item => item["ยี่ห้อ"]))].sort();
+// === โค้ดใหม่สำหรับ populateFilterOptions (อ่านจาก "โพย") ===
+async function populateFilterOptions() {
+  console.log("กำลังโหลด 'โพย' Filter จาก summary/filters...");
+  try {
+    const filterDoc = await db.collection("summary").doc("filters").get();
 
-  const categorySelect = document.getElementById("filter-category");
-  if (categorySelect) {
-    categorySelect.innerHTML = `<option value="">ทั้งหมด</option>`;
-    categories.forEach(cat => {
-      if(cat) categorySelect.appendChild(new Option(cat, cat));
-    });
-  }
+    if (!filterDoc.exists) {
+      console.warn("ยังไม่มี 'โพย' Filter (summary/filters)");
+      return;
+    }
 
-  const brandSelect = document.getElementById("filter-brand");
-  if (brandSelect) {
-    brandSelect.innerHTML = `<option value="">ทั้งหมด</option>`;
-    brands.forEach(br => {
-      if(br) brandSelect.appendChild(new Option(br, br));
-    });
+    const data = filterDoc.data();
+
+    // เติม "หมวดหมู่"
+    const categories = data.categories || [];
+    const categorySelect = document.getElementById("filter-category");
+    if (categorySelect) {
+      categorySelect.innerHTML = `<option value="">ทั้งหมด</option>`; // ล้างของเก่า
+      categories.forEach(cat => {
+        if(cat) categorySelect.appendChild(new Option(cat, cat));
+      });
+    }
+
+    // เติม "ยี่ห้อ"
+    const brands = data.brands || [];
+    const brandSelect = document.getElementById("filter-brand");
+    if (brandSelect) {
+      brandSelect.innerHTML = `<option value="">ทั้งหมด</option>`; // ล้างของเก่า
+      brands.forEach(br => {
+        if(br) brandSelect.appendChild(new Option(br, br));
+      });
+    }
+
+  } catch (err) {
+    console.error("ไม่สามารถโหลด 'โพย' Filter ได้:", err);
   }
 }
 
