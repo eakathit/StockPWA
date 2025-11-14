@@ -492,7 +492,6 @@
                     </th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ยี่ห้อ</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">จำนวน</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">สถานะ</th>
                   </tr>
                 </thead>
                 <tbody id="dashboard-stock-body" class="bg-white divide-y divide-gray-200">
@@ -556,7 +555,6 @@
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ยี่ห้อ</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     จำนวนคงเหลือ</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">สถานะ</th>
                 </tr>
               </thead>
               <tbody id="stock-table-body" class="bg-white divide-y divide-gray-200">
@@ -600,15 +598,6 @@
               <label for="filter-brand" class="block mb-1.5 text-sm font-medium text-gray-600">ยี่ห้อ</label>
               <select id="filter-brand" class="custom-select w-full border border-gray-300 px-3 py-2 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
                 <option value="">ทั้งหมด</option>
-              </select>
-            </div>
-  
-            <div>
-              <label for="filter-status" class="block mb-1.5 text-sm font-medium text-gray-600">สถานะ</label>
-              <select id="filter-status" class="custom-select w-full border border-gray-300 px-3 py-2 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow">
-                <option value="">ทั้งหมด</option>
-                <option value="ของคงเหลือ">ของคงเหลือ</option>
-                <option value="ของใหม่">ของใหม่</option>
               </select>
             </div>
           </div>
@@ -696,20 +685,10 @@
               </div>
 
               <div>
-  <label for="item-project" class="block text-sm font-medium text-gray-700 mb-1">โปรเจกต์ (ไม่บังคับ)</label>
-  <input type="text" id="item-project"
-    placeholder="เช่น DexTech"
-    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-</div>
-
-              <div>
-                <label for="categorystatus" class="block text-sm font-medium text-gray-700 mb-1">สถานะ</label>
-                <select id="categorystatus"
-                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
-                  <option value="">เลือกสถานะ</option>
-                  <option value="ของคงเหลือ">ของคงเหลือ</option>
-                  <option value="ของใหม่">ของใหม่</option>
-                </select>
+                <label for="item-project" class="block text-sm font-medium text-gray-700 mb-1">โปรเจกต์ (ไม่บังคับ)</label>
+                <input type="text" id="item-project"
+                  placeholder="เช่น DexTech"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
               </div>
   
               <div class="md:col-span-2">
@@ -773,16 +752,6 @@
                 <input type="number" id="current-stock"
                   class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-100"
                   readonly>
-              </div>
-  
-              <div>
-                <label for="issue-status" class="block text-sm font-medium text-gray-700 mb-1">สถานะ</label>
-                <select id="issue-status"
-                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
-                  <option value="">เลือกสถานะ</option>
-                  <option value="ของคงเหลือ">ของคงเหลือ</option>
-                  <option value="ของใหม่">ของใหม่</option>
-                </select>
               </div>
   
               <div>
@@ -1275,7 +1244,6 @@ function initEventListeners() {
   document.getElementById("reset-filter-btn")?.addEventListener("click", () => {
       document.getElementById("filter-category").value = "";
       document.getElementById("filter-brand").value = "";
-      document.getElementById("filter-status").value = "";
       document.getElementById("search-input").value = "";
       
       AppState.filteredStockData = [...AppState.stockData];
@@ -1435,7 +1403,7 @@ async function loadDashboardStock() {
     
   } catch (err) {
     console.error("Error loading dashboard stock:", err);
-    tbody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-red-500">ไม่สามารถโหลดข้อมูลได้</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-red-500">ไม่สามารถโหลดข้อมูลได้</td></tr>`;
   }
 }
 
@@ -1594,18 +1562,12 @@ function renderStockDashboard(data) {
   tbody.innerHTML = "";
   
   if (data.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" class="text-center p-4 text-gray-500">ยังไม่มีข้อมูลสินค้า</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-gray-500">ยังไม่มีข้อมูลสินค้า</td></tr>`;
     return;
   }
 
   data.forEach(item => {
     const tr = document.createElement("tr");
-    const statusClass = item['สถานะ'] === 'ของใหม่'
-      ? "bg-green-100 text-green-800"
-      : item['สถานะ'] === 'ของคงเหลือ'
-        ? "bg-orange-100 text-orange-800"
-        : "bg-gray-100 text-gray-800";
-
     const projectNote = item['โปรเจกต์'] ? `<div class="text-xs text-gray-500">${item['โปรเจกต์']}</div>` : '';
 tr.innerHTML = `
   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -1615,11 +1577,6 @@ tr.innerHTML = `
   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item['หมวดหมู่']}</td>
   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item['ยี่ห้อ']}</td>
   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item['จำนวนคงเหลือ']}</td>
-  <td class="px-6 py-4 whitespace-nowrap text-sm">
-    <span class="px-2 py-1 rounded-full text-xs font-semibold ${statusClass}">
-      ${item['สถานะ']}
-    </span>
-  </td>
 `;
     tbody.appendChild(tr);
   });
@@ -1632,7 +1589,7 @@ function renderStockPage() {
   tbody.innerHTML = "";
   
   if (AppState.filteredStockData.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-gray-500">ไม่พบข้อมูลสินค้าที่ตรงเงื่อนไข</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="4" class="text-center p-8 text-gray-500">ไม่พบข้อมูลสินค้าที่ตรงเงื่อนไข</td></tr>`;
       renderStockPagination();
       return;
   }
@@ -1641,11 +1598,6 @@ function renderStockPage() {
   const pageData = AppState.filteredStockData.slice(startIndex, startIndex + AppState.itemsPerPage);
 
   pageData.forEach(item => {
-    const statusClass = item['สถานะ'] === 'ของใหม่'
-      ? "bg-green-100 text-green-800"
-      : item['สถานะ'] === 'ของคงเหลือ'
-        ? "bg-orange-100 text-orange-800"
-        : "bg-gray-100 text-gray-800";
     const tr = document.createElement("tr");
     const projectNote = item['โปรเจกต์'] ? `<div class="text-xs text-gray-500">${item['โปรเจกต์']}</div>` : '';
 tr.innerHTML = `
@@ -1656,9 +1608,6 @@ tr.innerHTML = `
   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item['หมวดหมู่']}</td>
   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item['ยี่ห้อ']}</td>
   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item['จำนวนคงเหลือ']}</td>
-  <td class="px-6 py-4 whitespace-nowrap text-sm">
-    <span class="px-2 py-1 rounded-full text-xs font-semibold ${statusClass}">${item['สถานะ']}</span>
-  </td>
 `;
     tbody.appendChild(tr);
   });
@@ -1816,17 +1765,14 @@ function closeFilterModal() {
 function applySearchAndFilter(searchText = "") {
   const categorySelect = document.getElementById("filter-category");
   const brandSelect = document.getElementById("filter-brand");
-  const statusSelect = document.getElementById("filter-status");
   
   const category = categorySelect?.value || "";
   const brand = brandSelect?.value || "";
-  const status = statusSelect?.value || "";
 
   AppState.filteredStockData = AppState.stockData.filter(item => {
     const matchFilter =
       (!category || item["หมวดหมู่"] === category) &&
-      (!brand || item["ยี่ห้อ"] === brand) &&
-      (!status || item["สถานะ"] === status);
+      (!brand || item["ยี่ห้อ"] === brand);
 
     const searchMatch =
       !searchText ||
@@ -1887,14 +1833,12 @@ async function submitReceivingForm(event) {
             quantity: Number(document.getElementById("quantity")?.value.trim()),
             category: document.getElementById("category-input")?.value.trim(),
             brand: brandValue,
-            status: document.getElementById("categorystatus")?.value.trim(),
             notes: document.getElementById("notes")?.value.trim() || ""
   };
 
-  // ✅ 2. เพิ่มบรรทัดนี้ เพื่อดึงค่าโปรเจกต์
   const itemProject = document.getElementById("item-project")?.value.trim() || "";
 
-  if (!record.date || !record.productCode || !record.quantity || !record.category || !record.brand || !record.status) {
+  if (!record.date || !record.productCode || !record.quantity || !record.category || !record.brand) {
     showToast("กรุณากรอกข้อมูลให้ครบถ้วน", "error");
     submitBtn.disabled = false; submitBtn.innerText = "บันทึก";
     return;
@@ -1909,8 +1853,7 @@ async function submitReceivingForm(event) {
   try {
     
     const stockQuery = db.collection("stock")
-                          .where("รหัสสินค้า", "==", record.productCode)
-                          .where("สถานะ", "==", record.status);
+                          .where("รหัสสินค้า", "==", record.productCode);
     
     const querySnapshot = await stockQuery.get(); 
     const stockDocRef = querySnapshot.empty ? null : querySnapshot.docs[0].ref; 
@@ -1940,22 +1883,21 @@ async function submitReceivingForm(event) {
         console.log("Transaction: อัปเดตสต็อกเดิม...");
         const newQty = currentQty + record.quantity;
         transaction.update(stockDocRef, { 
-    'จำนวนคงเหลือ': newQty,
-    'โปรเจกต์': itemProject // ✅ เพิ่ม key/value นี้
-});
+          'จำนวนคงเหลือ': newQty,
+          'โปรเจกต์': itemProject // ✅ เพิ่ม key/value นี้
+        });
       
       } else {
         
         console.log("Transaction: สร้างสต็อกใหม่...");
         const newStockRef = db.collection("stock").doc();
         transaction.set(newStockRef, { 
-      'รหัสสินค้า': record.productCode,
-      'หมวดหมู่': record.category,
-      'ยี่ห้อ': record.brand,
-      'จำนวนคงเหลือ': record.quantity,
-      'สถานะ': record.status,
-      'โปรเจกต์': itemProject // ✅ เพิ่ม key/value นี้
-    });
+          'รหัสสินค้า': record.productCode,
+          'หมวดหมู่': record.category,
+          'ยี่ห้อ': record.brand,
+          'จำนวนคงเหลือ': record.quantity,
+          'โปรเจกต์': itemProject // ✅ เพิ่ม key/value นี้
+        });
       }
     });
 
@@ -1996,11 +1938,10 @@ async function submitIssuingForm(event) {
     date: document.getElementById("issue-date")?.value.trim(),
     productCode: document.getElementById("issue-product-code")?.value.trim(),
     quantity: Number(document.getElementById("issue-quantity")?.value.trim()),
-    issuer: issuer,
-    status: document.getElementById("issue-status")?.value.trim()
+    issuer: issuer
   };
 
-  if (!record.date || !record.productCode || !record.quantity || !record.issuer || !record.status) {
+  if (!record.date || !record.productCode || !record.quantity || !record.issuer) {
     showToast("กรุณากรอกข้อมูลให้ครบถ้วน", "error");
     submitBtn.disabled = false; submitBtn.innerText = "เบิกสินค้า";
     return;
@@ -2015,13 +1956,12 @@ async function submitIssuingForm(event) {
   try {
     
     const stockQuery = db.collection("stock")
-                          .where("รหัสสินค้า", "==", record.productCode)
-                          .where("สถานะ", "==", record.status);
+                          .where("รหัสสินค้า", "==", record.productCode);
       
     const querySnapshot = await stockQuery.get();
 
     if (querySnapshot.empty) {
-      throw new Error("ไม่พบสินค้า (รหัส: " + record.productCode + ", สถานะ: " + record.status + ") ในคลัง");
+      throw new Error("ไม่พบสินค้า (รหัส: " + record.productCode + ") ในคลัง");
     }
 
     const stockDocRef = querySnapshot.docs[0].ref;
@@ -2044,9 +1984,8 @@ async function submitIssuingForm(event) {
       const issueRef = db.collection("issue").doc();
       transaction.set(issueRef, record);
       transaction.update(stockDocRef, { 
-    'จำนวนคงเหลือ': newQty,
-    'โปรเจกต์': itemProject // ✅ เพิ่ม key/value นี้
-});
+        'จำนวนคงเหลือ': newQty
+      });
     });
 
     showToast("บันทึกการเบิกสินค้าสำเร็จ", "success");
@@ -2145,10 +2084,9 @@ async function submitPOForm(e) {
 
 async function searchProductStock() {
   const productCode = document.getElementById("issue-product-code")?.value.trim() || "";
-  const status = document.getElementById("issue-status")?.value.trim() || "";
 
-  if (!productCode || !status) {
-    showToast("กรุณากรอกรหัสสินค้าและเลือกสถานะก่อนค้นหา", "info", 3000);
+  if (!productCode) {
+    showToast("กรุณากรอกรหัสสินค้าก่อนค้นหา", "info", 3000);
     return; // ⬅️ หยุดการทำงานทันที
   }
 
@@ -2157,13 +2095,12 @@ async function searchProductStock() {
   
   try {
       const query = db.collection("stock")
-                      .where("รหัสสินค้า", "==", productCode)
-                      .where("สถานะ", "==", status);
+                      .where("รหัสสินค้า", "==", productCode);
       
       const snapshot = await query.get();
 
       if (snapshot.empty) {
-          showToast("ไม่พบสินค้าหรือสถานะที่เลือก", "error");
+          showToast("ไม่พบสินค้า", "error");
           currentStockInput.value = "";
       } else {
           const stockDoc = snapshot.docs[0];
