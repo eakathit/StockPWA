@@ -763,26 +763,6 @@
                   readonly>
               </div>
   
-              <div>
-                <label for="requester" class="block text-sm font-medium text-gray-700 mb-1">ผู้เบิก</label>
-                <select id="requester"
-                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
-                  <option value="">เลือกผู้เบิก</option>
-                  <option value="พี่โต้ง">พี่โต้ง</option>
-                  <option value="พี่เอ็ม">พี่เอ็ม</option>
-                  <option value="พี่วุธ">พี่วุธ</option>
-                  <option value="พี่บิว">พี่บิว</option>
-                  <option value="พี่เที่ยง">พี่เที่ยง</option>
-                  <option value="other">อื่นๆ (ระบุ)</option>
-                </select>
-              </div>
-  
-              <div id="other-requester-container" class="hidden">
-                <label for="other-requester" class="block text-sm font-medium text-gray-700 mb-1">ระบุชื่อผู้เบิก</label>
-                <input type="text" id="other-requester"
-                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-              </div>
-  
               <div class="md:col-span-2">
                 <label for="issue-purpose" class="block text-sm font-medium text-gray-700 mb-1">หมายเหตุ</label>
                 <textarea id="issue-purpose" rows="3" placeholder="กรอกหากต้องการระบุข้อมูลเพิ่มเติม (ไม่บังคับ)"
@@ -1332,6 +1312,20 @@ function initEventListeners() {
         otherReceiverContainer.classList.add('hidden');
       }
   });
+
+  const issueInput = document.getElementById("issue-product-code");
+  if (issueInput) {
+    issueInput.addEventListener("input", function() {
+      this.value = this.value.toUpperCase();
+    });
+  }
+  
+  const receiveInput = document.getElementById("product-code");
+  if (receiveInput) {
+    receiveInput.addEventListener("input", function() {
+      this.value = this.value.toUpperCase();
+    });
+  }
 
   const addProductBtn = document.getElementById("add-product");
   const removeProductBtn = document.getElementById("remove-product");
@@ -1912,12 +1906,26 @@ async function submitReceivingForm(event) {
     const itemProject = document.getElementById("item-project")?.value.trim() || "";
 
     // แก้ไข query ตรงนี้
+    // 1. ค้นหาด้วยรหัสสินค้าเพียงอย่างเดียวก่อน
     const stockQuery = db.collection("stock")
-                          .where("รหัสสินค้า", "==", record.productCode)
-                          .where("โปรเจกต์", "==", itemProject);
+                          .where("รหัสสินค้า", "==", record.productCode);
 
     const querySnapshot = await stockQuery.get();
-    const stockDocRef = querySnapshot.empty ? null : querySnapshot.docs[0].ref; 
+    let stockDocRef = null;
+
+    // 2. ตรวจสอบหาตัวที่โปรเจกต์ตรงกัน (โดยถือว่า ไม่มีข้อมูล = ค่าว่าง)
+    if (!querySnapshot.empty) {
+        const match = querySnapshot.docs.find(doc => {
+            const data = doc.data();
+            // ถ้าในฐานข้อมูลไม่มีฟิลด์ 'โปรเจกต์' ให้ถือว่าเป็น "" (ค่าว่าง)
+            const existingProject = data['โปรเจกต์'] || ""; 
+            return existingProject === itemProject;
+        });
+
+        if (match) {
+            stockDocRef = match.ref;
+        }
+    }
 
     await db.runTransaction(async (transaction) => {
       
@@ -2008,26 +2016,20 @@ async function submitIssuingForm(event) {
   submitBtn.disabled = true;
   submitBtn.innerText = "กำลังบันทึก...";
 
-  let issuer = document.getElementById("requester")?.value.trim() || "";
-  if (issuer === "other") {
-    issuer = document.getElementById("other-requester")?.value.trim() || "";
-    if (!issuer) {
-      showToast("กรุณาระบุชื่อผู้เบิก", "error");
-      submitBtn.disabled = false; submitBtn.innerText = "เบิกสินค้า";
-      return;
-    }
-  }
+  // --- ลบส่วนดึงข้อมูลผู้เบิก (Requester) ออก ---
 
-  const project = document.getElementById("issue-project")?.value.trim() || "";
+  const projectInput = document.getElementById("issue-project")?.value.trim() || "";
 
   const record = {
     date: document.getElementById("issue-date")?.value.trim(),
-    productCode: document.getElementById("issue-product-code")?.value.trim(),
+    productCode: document.getElementById("issue-product-code")?.value.trim().toUpperCase(),
     quantity: Number(document.getElementById("issue-quantity")?.value.trim()),
-    issuer: issuer
+    issuer: "-", // ใส่ขีดละไว้แทน เพื่อให้ Database ยังมีฟิลด์นี้อยู่ (เผื่อระบบอื่นใช้)
+    project: projectInput
   };
 
-  if (!record.date || !record.productCode || !record.quantity || !record.issuer) {
+  // ลบเช็ค !record.issuer ออก
+  if (!record.date || !record.productCode || !record.quantity) {
     showToast("กรุณากรอกข้อมูลให้ครบถ้วน", "error");
     submitBtn.disabled = false; submitBtn.innerText = "เบิกสินค้า";
     return;
@@ -2040,19 +2042,42 @@ async function submitIssuingForm(event) {
   }
 
   try {
-    
-    const stockQuery = db.collection("stock")
-                      .where("รหัสสินค้า", "==", record.productCode)
-                      .where("โปรเจกต์", "==", project); // <-- เพิ่มบรรทัดนี้
-                          
-      
+    // 1. ค้นหาสินค้า
+    const stockQuery = db.collection("stock").where("รหัสสินค้า", "==", record.productCode);    
     const querySnapshot = await stockQuery.get();
 
     if (querySnapshot.empty) {
       throw new Error("ไม่พบสินค้า (รหัส: " + record.productCode + ") ในคลัง");
     }
 
-    const stockDocRef = querySnapshot.docs[0].ref;
+    // 2. หาเอกสารสต็อกที่เหมาะสม
+    let targetDoc = null;
+    let genericDoc = null;
+
+    querySnapshot.forEach(doc => {
+        const data = doc.data();
+        const docProject = data['โปรเจกต์'] || "";
+        
+        if (docProject === projectInput) {
+            targetDoc = doc;
+        }
+        if (docProject === "") {
+            genericDoc = doc;
+        }
+    });
+
+    // 3. เลือกใช้สต็อก
+    let stockDocRef;
+    
+    if (targetDoc) {
+        console.log("ตัดจากสต็อกโปรเจกต์: " + projectInput);
+        stockDocRef = targetDoc.ref;
+    } else if (genericDoc) {
+        console.log("ไม่พบสต็อกโปรเจกต์ ใช้สต็อกส่วนกลางแทน");
+        stockDocRef = genericDoc.ref;
+    } else {
+        throw new Error(`ไม่พบสินค้าสำหรับโปรเจกต์ "${projectInput || 'ส่วนกลาง'}" (อาจเป็นสินค้าของโปรเจกต์อื่น)`);
+    }
 
     await db.runTransaction(async (transaction) => {
       
@@ -2078,7 +2103,11 @@ async function submitIssuingForm(event) {
 
     showToast("บันทึกการเบิกสินค้าสำเร็จ", "success");
     event.target.reset();
-    document.getElementById("other-requester-container").classList.add("hidden");
+    
+    // ซ่อน container อื่นๆ ที่อาจจะถูกเปิดค้างไว้
+    const otherReqContainer = document.getElementById("other-requester-container");
+    if(otherReqContainer) otherReqContainer.classList.add("hidden");
+
     document.getElementById("issue-date").value = new Date().toISOString().split('T')[0];
     
     AppState.stockLoaded = false; 
@@ -2171,8 +2200,8 @@ async function submitPOForm(e) {
 }
 
 async function searchProductStock() {
-  const productCode = document.getElementById("issue-product-code")?.value.trim() || "";
-  const project = document.getElementById("issue-project")?.value.trim() || ""; // <-- 1. เพิ่มบรรทัดนี้
+  const productCode = document.getElementById("issue-product-code")?.value.trim().toUpperCase() || "";
+  const projectInput = document.getElementById("issue-project")?.value.trim() || ""; // โปรเจกต์ที่เลือกใน Dropdown
 
   if (!productCode) {
     showToast("กรุณากรอกรหัสสินค้าก่อนค้นหา", "info", 3000);
@@ -2183,20 +2212,47 @@ async function searchProductStock() {
   currentStockInput.value = "กำลังค้นหา...";
 
   try {
-      const query = db.collection("stock")
-                      .where("รหัสสินค้า", "==", productCode)
-                      .where("โปรเจกต์", "==", project); // <-- 2. เพิ่มบรรทัดนี้
-
+      // 1. แก้ไข: ค้นหาด้วยรหัสสินค้าเพียงอย่างเดียว (ไม่ต้องกรองโปรเจกต์ใน Database)
+      const query = db.collection("stock").where("รหัสสินค้า", "==", productCode);
       const snapshot = await query.get();
 
       if (snapshot.empty) {
-          showToast("ไม่พบสินค้า", "error");
-          currentStockInput.value = "";
-      } else {
-          const stockDoc = snapshot.docs[0];
-          const stockQty = stockDoc.data()['จำนวนคงเหลือ'];
-          currentStockInput.value = stockQty;
+          showToast("ไม่พบรหัสสินค้านี้ในระบบ", "error");
+          currentStockInput.value = "0";
+          return;
       }
+
+      // 2. Logic การเลือกสต็อก (เหมือนตอนเบิก): หาของโปรเจกต์ก่อน -> ถ้าไม่มีเอาของส่วนกลาง
+      let targetDoc = null;    // เก็บสต็อกที่ตรงโปรเจกต์เป๊ะๆ
+      let genericDoc = null;   // เก็บสต็อกส่วนกลาง (ไม่มีโปรเจกต์)
+
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const docProject = data['โปรเจกต์'] || ""; 
+        
+        if (docProject === projectInput) {
+            targetDoc = doc;
+        }
+        if (docProject === "") {
+            genericDoc = doc;
+        }
+      });
+
+      // 3. ตัดสินใจว่าจะโชว์ยอดไหน
+      if (targetDoc) {
+          // เจอของโปรเจกต์ที่เลือก โชว์ยอดนั้น
+          currentStockInput.value = targetDoc.data()['จำนวนคงเหลือ'];
+          console.log("แสดงยอดของโปรเจกต์: " + projectInput);
+      } else if (genericDoc) {
+          // ไม่เจอของโปรเจกต์ แต่เจอของส่วนกลาง โชว์ยอดส่วนกลางแทน
+          currentStockInput.value = genericDoc.data()['จำนวนคงเหลือ'];
+          console.log("แสดงยอดของส่วนกลาง");
+      } else {
+          // มีรหัสสินค้านี้ แต่เป็นของโปรเจกต์อื่น (ไม่ใช่ที่เลือก และไม่ใช่ส่วนกลาง)
+          showToast(`สินค้านี้มีอยู่ แต่เป็นของโปรเจกต์อื่น`, "error");
+          currentStockInput.value = "0";
+      }
+
   } catch (err) {
       console.error("Error searching stock:", err);
       showToast("เกิดข้อผิดพลาด: " + err.message, "error");
