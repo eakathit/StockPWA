@@ -691,11 +691,6 @@
                   class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
               </div>
   
-              <div class="md:col-span-2">
-                <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">หมายเหตุ</label>
-                <textarea id="notes" rows="3" placeholder="กรอกหากต้องการระบุข้อมูลเพิ่มเติม (ไม่บังคับ)"
-                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
-              </div>
             </div>
   
             <div class="mt-8 flex justify-end space-x-4">
@@ -759,14 +754,9 @@
                   class="block text-sm font-medium text-gray-700 mb-1">จำนวนคงเหลือปัจจุบัน</label>
                 
                 <input type="text" id="current-stock"
-                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-100"
-                  readonly>
-              </div>
-  
-              <div class="md:col-span-2">
-                <label for="issue-purpose" class="block text-sm font-medium text-gray-700 mb-1">หมายเหตุ</label>
-                <textarea id="issue-purpose" rows="3" placeholder="กรอกหากต้องการระบุข้อมูลเพิ่มเติม (ไม่บังคับ)"
-                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+              placeholder="แสดงผลอัตโนมัติเมื่อระบุรหัสสินค้า"
+              class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-100 text-gray-500 cursor-not-allowed"
+              readonly>
               </div>
             </div>
   
@@ -872,12 +862,6 @@
                 <label for="other-receiver" class="block text-sm font-medium text-gray-700 mb-1">ระบุชื่อผู้รับสินค้า</label>
                 <input type="text" id="other-receiver"
                   class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-              </div>
-  
-              <div class="md:col-span-2">
-                <label for="po-notes" class="block text-sm font-medium text-gray-700 mb-1">หมายเหตุ</label>
-                <textarea id="po-notes" rows="3" placeholder="กรอกหากต้องการระบุข้อมูลเพิ่มเติม"
-                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
               </div>
             </div>
   
@@ -1884,7 +1868,6 @@ async function submitReceivingForm(event) {
             quantity: Number(document.getElementById("quantity")?.value.trim()),
             category: document.getElementById("category-input")?.value.trim(),
             brand: brandValue,
-            notes: document.getElementById("notes")?.value.trim() || ""
   };
 
   const itemProject = document.getElementById("item-project")?.value.trim() || "";
@@ -2143,7 +2126,6 @@ async function submitPOForm(e) {
   const poDate = document.getElementById("po-date")?.value.trim();
   const poNumber = document.getElementById("po-number")?.value.trim();
   const projectCode = document.getElementById("project-code")?.value.trim();
-  const poNotes = document.getElementById("po-notes")?.value.trim();
 
   if (!purchaser || !receiver || !poDate || !poNumber) {
      showToast("กรุณากรอกข้อมูล PO ให้ครบถ้วน", "error");
@@ -2170,7 +2152,6 @@ async function submitPOForm(e) {
         receiver: receiver,
         qty: quantities[index],
         unitPrice: unitPrices[index] || 0,
-        notes: poNotes || ""
       };
       
       const poRef = db.collection("po").doc();
